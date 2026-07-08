@@ -23,7 +23,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { cn } from "@/lib/utils";
+import { cn, formatCompactCurrency, formatCurrency } from "@/lib/utils";
 
 /* ---------- data ---------- */
 const revenueData = [
@@ -52,11 +52,61 @@ const topProducts = [
 ];
 
 const orders = [
-  { id: "#4021", name: "Amelia Watson", email: "amelia@hey.com", items: 3, total: 248.0, pay: "paid", ship: "processing", initials: "AW", tone: "from-chart-1 to-chart-5" },
-  { id: "#4020", name: "Noah Bennett", email: "noah@fastmail.com", items: 1, total: 89.5, pay: "paid", ship: "shipped", initials: "NB", tone: "from-chart-2 to-chart-3" },
-  { id: "#4019", name: "Priya Shah", email: "priya@work.io", items: 5, total: 512.4, pay: "pending", ship: "unfulfilled", initials: "PS", tone: "from-chart-4 to-chart-1" },
-  { id: "#4018", name: "Marc Dubois", email: "marc@dubois.fr", items: 2, total: 164.0, pay: "paid", ship: "delivered", initials: "MD", tone: "from-chart-3 to-chart-2" },
-  { id: "#4017", name: "Ines García", email: "ines@correo.es", items: 4, total: 328.9, pay: "refunded", ship: "returned", initials: "IG", tone: "from-chart-5 to-chart-4" },
+  {
+    id: "#4021",
+    name: "Amelia Watson",
+    email: "amelia@hey.com",
+    items: 3,
+    total: 248.0,
+    pay: "paid",
+    ship: "processing",
+    initials: "AW",
+    tone: "from-chart-1 to-chart-5",
+  },
+  {
+    id: "#4020",
+    name: "Noah Bennett",
+    email: "noah@fastmail.com",
+    items: 1,
+    total: 89.5,
+    pay: "paid",
+    ship: "shipped",
+    initials: "NB",
+    tone: "from-chart-2 to-chart-3",
+  },
+  {
+    id: "#4019",
+    name: "Priya Shah",
+    email: "priya@work.io",
+    items: 5,
+    total: 512.4,
+    pay: "pending",
+    ship: "unfulfilled",
+    initials: "PS",
+    tone: "from-chart-4 to-chart-1",
+  },
+  {
+    id: "#4018",
+    name: "Marc Dubois",
+    email: "marc@dubois.fr",
+    items: 2,
+    total: 164.0,
+    pay: "paid",
+    ship: "delivered",
+    initials: "MD",
+    tone: "from-chart-3 to-chart-2",
+  },
+  {
+    id: "#4017",
+    name: "Ines García",
+    email: "ines@correo.es",
+    items: 4,
+    total: 328.9,
+    pay: "refunded",
+    ship: "returned",
+    initials: "IG",
+    tone: "from-chart-5 to-chart-4",
+  },
 ];
 
 /* ---------- primitives ---------- */
@@ -99,7 +149,9 @@ function Segmented({
           onClick={() => onChange(o)}
           className={cn(
             "px-2.5 h-6 rounded-[5px] transition-colors",
-            value === o ? "bg-surface text-foreground shadow-xs font-medium" : "text-muted-foreground hover:text-foreground",
+            value === o
+              ? "bg-surface text-foreground shadow-xs font-medium"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           {o}
@@ -109,7 +161,21 @@ function Segmented({
   );
 }
 
-function StatusPill({ kind, label }: { kind: "paid" | "pending" | "refunded" | "shipped" | "processing" | "unfulfilled" | "delivered" | "returned"; label: string }) {
+function StatusPill({
+  kind,
+  label,
+}: {
+  kind:
+    | "paid"
+    | "pending"
+    | "refunded"
+    | "shipped"
+    | "processing"
+    | "unfulfilled"
+    | "delivered"
+    | "returned";
+  label: string;
+}) {
   const map: Record<string, string> = {
     paid: "text-success bg-success/10",
     delivered: "text-success bg-success/10",
@@ -121,7 +187,12 @@ function StatusPill({ kind, label }: { kind: "paid" | "pending" | "refunded" | "
     returned: "text-destructive bg-destructive/10",
   };
   return (
-    <span className={cn("inline-flex items-center gap-1 text-[11px] font-medium px-1.5 h-[20px] rounded-full", map[kind])}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 text-[11px] font-medium px-1.5 h-[20px] rounded-full",
+        map[kind],
+      )}
+    >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {label}
     </span>
@@ -138,7 +209,8 @@ function Hero() {
           Good evening, Tushar <span className="inline-block">👋</span>
         </h1>
         <p className="text-[13.5px] text-muted-foreground mt-1">
-          Sales are pacing <span className="text-success font-medium">14.2% ahead</span> of last week. Two products need restocking.
+          Sales are pacing <span className="text-success font-medium">14.2% ahead</span> of last
+          week. Two products need restocking.
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -156,10 +228,20 @@ function Hero() {
 
 function ExecMetrics() {
   const metrics = [
-    { label: "Revenue today", value: "$14,283", delta: 12.4, foot: "vs. $12,712 yesterday" },
+    {
+      label: "Revenue today",
+      value: formatCurrency(14283),
+      delta: 12.4,
+      foot: `vs. ${formatCurrency(12712)} yesterday`,
+    },
     { label: "Orders", value: "312", delta: 8.1, foot: "42 pending fulfillment" },
     { label: "Conversion rate", value: "3.28%", delta: -0.6, foot: "of 48,210 visitors" },
-    { label: "Avg. order value", value: "$92.40", delta: 4.2, foot: "AOV up over 7 days" },
+    {
+      label: "Avg. order value",
+      value: formatCurrency(92.4),
+      delta: 4.2,
+      foot: "AOV up over 7 days",
+    },
   ];
   return (
     <Card className="overflow-hidden">
@@ -187,11 +269,13 @@ function RevenueChart() {
         <div>
           <div className="text-[12px] text-muted-foreground">Revenue</div>
           <div className="mt-1 flex items-baseline gap-2">
-            <div className="text-[22px] font-semibold tracking-tight num">$74,392.10</div>
+            <div className="text-[22px] font-semibold tracking-tight num">
+              {formatCurrency(74392.1)}
+            </div>
             <Delta v={14.2} />
           </div>
           <div className="text-[11.5px] text-muted-foreground mt-0.5">
-            Compared to $65,148.00 previous period
+            Compared to {formatCurrency(65148)} previous period
           </div>
         </div>
         <Segmented options={["1D", "7D", "1M", "1Y"]} value={range} onChange={setRange} />
@@ -207,8 +291,18 @@ function RevenueChart() {
               </linearGradient>
             </defs>
             <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 4" vertical={false} />
-            <XAxis dataKey="d" tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
-            <YAxis tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+            <XAxis
+              dataKey="d"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+              tickFormatter={(v) => formatCompactCurrency(v)}
+            />
             <Tooltip
               cursor={{ stroke: "var(--color-border-strong)", strokeDasharray: "3 3" }}
               contentStyle={{
@@ -219,10 +313,23 @@ function RevenueChart() {
                 boxShadow: "var(--shadow-elevated)",
               }}
               labelStyle={{ color: "var(--color-muted-foreground)", marginBottom: 2 }}
-              formatter={(v: number) => [`$${v.toLocaleString()}`, "Revenue"]}
+              formatter={(v: number) => [formatCurrency(v), "Revenue"]}
             />
-            <Area type="monotone" dataKey="p" stroke="var(--color-border-strong)" strokeWidth={1.5} strokeDasharray="4 4" fill="transparent" />
-            <Area type="monotone" dataKey="v" stroke="var(--color-foreground)" strokeWidth={2} fill="url(#rev)" />
+            <Area
+              type="monotone"
+              dataKey="p"
+              stroke="var(--color-border-strong)"
+              strokeWidth={1.5}
+              strokeDasharray="4 4"
+              fill="transparent"
+            />
+            <Area
+              type="monotone"
+              dataKey="v"
+              stroke="var(--color-foreground)"
+              strokeWidth={2}
+              fill="url(#rev)"
+            />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -242,9 +349,13 @@ function OrdersOverview() {
       <div className="flex items-center justify-between">
         <div>
           <div className="text-[13.5px] font-semibold">Orders overview</div>
-          <div className="text-[11.5px] text-muted-foreground mt-0.5">Snapshot of order pipeline</div>
+          <div className="text-[11.5px] text-muted-foreground mt-0.5">
+            Snapshot of order pipeline
+          </div>
         </div>
-        <button className="text-[11.5px] text-muted-foreground hover:text-foreground">View all →</button>
+        <button className="text-[11.5px] text-muted-foreground hover:text-foreground">
+          View all →
+        </button>
       </div>
       <div className="mt-4 space-y-2">
         {rows.map((r) => {
@@ -280,7 +391,8 @@ function Funnel() {
             <div className="flex items-center justify-between text-[12.5px]">
               <span className="text-muted-foreground">{f.label}</span>
               <span className="num tabular-nums font-medium">
-                {f.value.toLocaleString()} <span className="text-muted-foreground font-normal">· {f.pct}%</span>
+                {f.value.toLocaleString()}{" "}
+                <span className="text-muted-foreground font-normal">· {f.pct}%</span>
               </span>
             </div>
             <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
@@ -310,22 +422,48 @@ function CustomerInsights() {
       <div className="flex items-start justify-between">
         <div>
           <div className="text-[13.5px] font-semibold">Customer insights</div>
-          <div className="text-[11.5px] text-muted-foreground mt-0.5">New vs. returning · 6 weeks</div>
+          <div className="text-[11.5px] text-muted-foreground mt-0.5">
+            New vs. returning · 6 weeks
+          </div>
         </div>
         <div className="flex gap-3 text-[11px]">
-          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-foreground" />New</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-border-strong" />Returning</span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-sm bg-foreground" />
+            New
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-sm bg-border-strong" />
+            Returning
+          </span>
         </div>
       </div>
       <div className="mt-4 h-[160px] -mx-1">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 0, left: -20, bottom: 0 }} barCategoryGap={16}>
+          <BarChart
+            data={data}
+            margin={{ top: 8, right: 0, left: -20, bottom: 0 }}
+            barCategoryGap={16}
+          >
             <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 4" vertical={false} />
-            <XAxis dataKey="d" tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
-            <YAxis tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
+            <XAxis
+              dataKey="d"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+            />
             <Tooltip
               cursor={{ fill: "var(--color-accent)" }}
-              contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }}
+              contentStyle={{
+                background: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                borderRadius: 8,
+                fontSize: 12,
+              }}
             />
             <Bar dataKey="n" fill="var(--color-foreground)" radius={[3, 3, 0, 0]} />
             <Bar dataKey="r" fill="var(--color-border-strong)" radius={[3, 3, 0, 0]} />
@@ -336,7 +474,7 @@ function CustomerInsights() {
         {[
           { l: "New (30d)", v: "1,284", d: 9.2 },
           { l: "Returning", v: "3,478", d: 4.1 },
-          { l: "LTV", v: "$412", d: 6.7 },
+          { l: "LTV", v: formatCurrency(412), d: 6.7 },
         ].map((s) => (
           <div key={s.l}>
             <div className="text-[11px] text-muted-foreground">{s.l}</div>
@@ -352,46 +490,59 @@ function CustomerInsights() {
 }
 
 function TopProducts() {
+  const maxRevenue = Math.max(...topProducts.map((product) => product.rev));
+
   return (
     <Card>
-      <div className="p-5 pb-3 flex items-center justify-between">
+      <div className="flex items-center justify-between p-5 pb-3">
         <div>
           <div className="text-[13.5px] font-semibold">Top products</div>
-          <div className="text-[11.5px] text-muted-foreground mt-0.5">By revenue · last 7 days</div>
+          <div className="mt-0.5 text-[11.5px] text-muted-foreground">By revenue · last 7 days</div>
         </div>
-        <button className="text-[11.5px] text-muted-foreground hover:text-foreground">View all →</button>
+        <button className="text-[11.5px] text-muted-foreground hover:text-foreground">
+          View all →
+        </button>
       </div>
-      <div className="px-2 pb-2">
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] text-muted-foreground">
-              <th className="text-left font-medium px-3 pb-2">Product</th>
-              <th className="text-right font-medium px-3 pb-2">Sold</th>
-              <th className="text-right font-medium px-3 pb-2">Revenue</th>
-              <th className="text-right font-medium px-3 pb-2">Trend</th>
-            </tr>
-          </thead>
-          <tbody>
-            {topProducts.map((p, i) => (
-              <tr key={p.sku} className="group hover:bg-accent/60 transition-colors">
-                <td className="px-3 py-2.5 rounded-l-md">
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-8 w-8 rounded-md bg-surface-muted border border-border grid place-items-center text-[10px] font-mono text-muted-foreground">
-                      {i + 1}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="truncate font-medium text-[13px]">{p.name}</div>
-                      <div className="text-[11px] text-muted-foreground font-mono">{p.sku}</div>
+      <div className="space-y-2 px-3 pb-3">
+        {topProducts.map((p, i) => (
+          <div
+            key={p.sku}
+            className="rounded-lg border border-border bg-surface-muted/35 p-3 transition-colors hover:bg-accent/40"
+          >
+            <div className="flex items-start gap-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-border bg-surface text-[10px] font-mono text-muted-foreground">
+                {i + 1}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-[13px] font-medium">{p.name}</div>
+                    <div className="mt-0.5 text-[11px] font-mono text-muted-foreground">
+                      {p.sku}
                     </div>
                   </div>
-                </td>
-                <td className="px-3 py-2.5 text-right num tabular-nums">{p.sold}</td>
-                <td className="px-3 py-2.5 text-right num tabular-nums font-medium">${p.rev.toLocaleString()}</td>
-                <td className="px-3 py-2.5 text-right rounded-r-md"><Delta v={p.trend} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <Delta v={p.trend} />
+                </div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-foreground"
+                    style={{ width: `${(p.rev / maxRevenue) * 100}%` }}
+                  />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-[11.5px]">
+                  <div>
+                    <div className="text-muted-foreground">Units sold</div>
+                    <div className="mt-0.5 font-medium num">{p.sold}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-muted-foreground">Revenue</div>
+                    <div className="mt-0.5 font-medium num">{formatCurrency(p.rev)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </Card>
   );
@@ -411,7 +562,14 @@ function InventoryHealth() {
       <div className="mt-4 flex items-center gap-4">
         <div className="relative h-[86px] w-[86px]">
           <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
-            <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--color-muted)" strokeWidth="3" />
+            <circle
+              cx="18"
+              cy="18"
+              r="15.5"
+              fill="none"
+              stroke="var(--color-muted)"
+              strokeWidth="3"
+            />
             <circle
               cx="18"
               cy="18"
@@ -426,14 +584,25 @@ function InventoryHealth() {
           <div className="absolute inset-0 grid place-items-center">
             <div className="text-center">
               <div className="text-[18px] font-semibold num leading-none">84</div>
-              <div className="text-[9.5px] text-muted-foreground uppercase tracking-wider">score</div>
+              <div className="text-[9.5px] text-muted-foreground uppercase tracking-wider">
+                score
+              </div>
             </div>
           </div>
         </div>
         <div className="flex-1 space-y-1.5 text-[12.5px]">
-          <div className="flex justify-between"><span className="text-muted-foreground">In stock</span><span className="num font-medium">1,284</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Low stock</span><span className="num font-medium text-warning">12</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Out of stock</span><span className="num font-medium text-destructive">3</span></div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">In stock</span>
+            <span className="num font-medium">1,284</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Low stock</span>
+            <span className="num font-medium text-warning">12</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Out of stock</span>
+            <span className="num font-medium text-destructive">3</span>
+          </div>
         </div>
       </div>
     </Card>
@@ -500,14 +669,22 @@ function OrdersTable() {
           </thead>
           <tbody>
             {orders.map((o) => (
-              <tr key={o.id} className="border-b border-border last:border-0 hover:bg-accent/40 transition-colors">
+              <tr
+                key={o.id}
+                className="border-b border-border last:border-0 hover:bg-accent/40 transition-colors"
+              >
                 <td className="px-5 py-3">
                   <div className="font-medium font-mono text-[12.5px]">{o.id}</div>
                   <div className="text-[11px] text-muted-foreground">2m ago</div>
                 </td>
                 <td className="px-3 py-3">
                   <div className="flex items-center gap-2.5">
-                    <div className={cn("h-7 w-7 rounded-full bg-gradient-to-br grid place-items-center text-[10px] font-semibold text-white", o.tone)}>
+                    <div
+                      className={cn(
+                        "h-7 w-7 rounded-full bg-gradient-to-br grid place-items-center text-[10px] font-semibold text-white",
+                        o.tone,
+                      )}
+                    >
                       {o.initials}
                     </div>
                     <div className="min-w-0">
@@ -517,9 +694,15 @@ function OrdersTable() {
                   </div>
                 </td>
                 <td className="px-3 py-3 num tabular-nums">{o.items}</td>
-                <td className="px-3 py-3"><StatusPill kind={o.pay as never} label={o.pay} /></td>
-                <td className="px-3 py-3"><StatusPill kind={o.ship as never} label={o.ship} /></td>
-                <td className="px-3 py-3 text-right num tabular-nums font-medium">${o.total.toFixed(2)}</td>
+                <td className="px-3 py-3">
+                  <StatusPill kind={o.pay as never} label={o.pay} />
+                </td>
+                <td className="px-3 py-3">
+                  <StatusPill kind={o.ship as never} label={o.ship} />
+                </td>
+                <td className="px-3 py-3 text-right num tabular-nums font-medium">
+                  {formatCurrency(o.total)}
+                </td>
                 <td className="px-5 py-3 text-right">
                   <button className="h-7 w-7 grid place-items-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
                     <MoreHorizontal className="h-4 w-4" />

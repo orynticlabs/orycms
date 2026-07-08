@@ -1,11 +1,40 @@
-import { Sparkles, TrendingUp, AlertTriangle, PackageX, ShoppingCart, UserPlus, RefreshCcw } from "lucide-react";
+import {
+  Sparkles,
+  TrendingUp,
+  AlertTriangle,
+  PackageX,
+  ShoppingCart,
+  UserPlus,
+  RefreshCcw,
+} from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 const activity = [
-  { icon: ShoppingCart, iconClass: "text-foreground", text: "New order #4021 from Amelia W.", meta: "$248.00 · 2m ago" },
-  { icon: PackageX, iconClass: "text-warning", text: "Ceramic Mug — Sand is low stock (4 left)", meta: "8m ago" },
+  {
+    icon: ShoppingCart,
+    iconClass: "text-foreground",
+    text: "New order #4021 from Amelia W.",
+    meta: `${formatCurrency(248)} · 2m ago`,
+  },
+  {
+    icon: PackageX,
+    iconClass: "text-warning",
+    text: "Ceramic Mug — Sand is low stock (4 left)",
+    meta: "8m ago",
+  },
   { icon: UserPlus, iconClass: "text-info", text: "12 new customers today", meta: "14m ago" },
-  { icon: RefreshCcw, iconClass: "text-muted-foreground", text: "Refund approved for order #3987", meta: "26m ago" },
-  { icon: ShoppingCart, iconClass: "text-foreground", text: "Order #4018 shipped via DHL", meta: "42m ago" },
+  {
+    icon: RefreshCcw,
+    iconClass: "text-muted-foreground",
+    text: "Refund approved for order #3987",
+    meta: "26m ago",
+  },
+  {
+    icon: ShoppingCart,
+    iconClass: "text-foreground",
+    text: "Order #4018 shipped via DHL",
+    meta: "42m ago",
+  },
 ];
 
 const insights = [
@@ -53,7 +82,9 @@ export function InsightsPanel() {
 
       <div className="p-4 border-b border-border/70">
         <div className="flex items-center justify-between">
-          <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Inventory warnings</div>
+          <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            Inventory warnings
+          </div>
           <span className="text-[11px] text-muted-foreground">3</span>
         </div>
         <div className="mt-2.5 space-y-1.5">
@@ -64,14 +95,18 @@ export function InsightsPanel() {
           ].map((p) => (
             <div key={p.name} className="flex items-center justify-between text-[12.5px] py-1">
               <span className="truncate pr-2">{p.name}</span>
-              <span className="num shrink-0 tabular-nums text-warning font-medium">{p.stock} left</span>
+              <span className="num shrink-0 tabular-nums text-warning font-medium">
+                {p.stock} left
+              </span>
             </div>
           ))}
         </div>
       </div>
 
       <div className="p-4 flex-1 overflow-y-auto">
-        <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Live activity</div>
+        <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          Live activity
+        </div>
         <ol className="mt-3 space-y-3.5 relative">
           <span className="absolute left-[7px] top-1 bottom-1 w-px bg-border" />
           {activity.map((a, i) => {

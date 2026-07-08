@@ -1,4 +1,8 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -13,7 +17,6 @@ import {
   Settings,
   ChevronDown,
   Sparkles,
-  Store,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -59,7 +62,7 @@ const NAV: { section: string; items: Item[] }[] = [
 ];
 
 export function AppSidebar({ collapsed }: { collapsed: boolean }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = usePathname();
   const [open, setOpen] = useState<Record<string, boolean>>({ Commerce: true });
 
   return (
@@ -70,20 +73,23 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
       )}
     >
       {/* Brand */}
-      <div className="h-14 flex items-center gap-2.5 px-4 border-b border-border/70">
-        <div className="h-7 w-7 rounded-md bg-foreground text-background grid place-items-center shrink-0">
-          <Store className="h-4 w-4" strokeWidth={2.25} />
+      <div className="flex h-14 items-center gap-2.5 border-b border-border/70 bg-sidebar px-4">
+        <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-surface">
+          <Image
+            src="/favicon.png"
+            alt="OryCMS logo"
+            width={24}
+            height={24}
+            className="h-6 w-6 object-contain"
+          />
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <div className="text-[13px] font-semibold tracking-tight truncate">Northwind</div>
-            <div className="text-[11px] text-muted-foreground truncate">Retail workspace</div>
+            <div className="text-[13px] font-semibold tracking-tight truncate">OryCMS</div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              By OrynticLabs Private Limited
+            </div>
           </div>
-        )}
-        {!collapsed && (
-          <button className="ml-auto p-1 rounded-md hover:bg-accent text-muted-foreground">
-            <ChevronDown className="h-3.5 w-3.5" />
-          </button>
         )}
       </div>
 
@@ -97,7 +103,8 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
             )}
             <ul className="space-y-0.5">
               {group.items.map((item) => {
-                const active = item.to && (item.to === "/" ? pathname === "/" : pathname.startsWith(item.to));
+                const active =
+                  item.to && (item.to === "/" ? pathname === "/" : pathname.startsWith(item.to));
                 const hasKids = !!item.children?.length;
                 const isOpen = open[item.label];
                 const Icon = item.icon;
@@ -131,7 +138,7 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
                             return (
                               <li key={c.label}>
                                 <Link
-                                  to={c.to}
+                                  href={c.to}
                                   className={cn(
                                     "flex items-center gap-2 h-7 px-2 rounded-md text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors",
                                     cActive && "text-foreground bg-sidebar-accent",
@@ -151,7 +158,7 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
                 return (
                   <li key={item.label}>
                     <Link
-                      to={item.to!}
+                      href={item.to!}
                       className={cn(
                         "group flex items-center gap-2.5 px-2 h-8 rounded-md text-[13px] text-sidebar-foreground hover:bg-sidebar-accent transition-colors relative",
                         active && "bg-sidebar-accent text-foreground font-medium",
@@ -163,7 +170,9 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
                       <Icon
                         className={cn(
                           "h-4 w-4 shrink-0",
-                          active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground",
+                          active
+                            ? "text-foreground"
+                            : "text-muted-foreground group-hover:text-foreground",
                         )}
                       />
                       {!collapsed && (
