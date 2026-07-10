@@ -2,21 +2,17 @@
 
 import { use } from "react";
 import { AppShell } from "@/components/dashboard/AppShell";
-import { PlaceholderPage } from "@/components/dashboard/PlaceholderPage";
+import { OryCMSCollectionContentPage } from "@/components/content/OryCMSCollectionContentPage";
 
 export default function CollectionContentPage({
-  params: paramsPromise,
+  params,
 }: {
   params: Promise<{ collection: string }>;
 }) {
-  const params = use(paramsPromise);
+  const { collection } = use(params);
   return (
     <AppShell section="Collections">
-      <PlaceholderPage
-        eyebrow={`Collection · ${params.collection}`}
-        title="Content entries"
-        description="Browse, filter, and manage all content entries for this collection."
-      />
+      <OryCMSCollectionContentPage collectionSlug={collection} mode="list" />
     </AppShell>
   );
 }

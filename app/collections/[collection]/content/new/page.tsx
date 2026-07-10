@@ -2,21 +2,17 @@
 
 import { use } from "react";
 import { AppShell } from "@/components/dashboard/AppShell";
-import { PlaceholderPage } from "@/components/dashboard/PlaceholderPage";
+import { OryCMSCollectionContentPage } from "@/components/content/OryCMSCollectionContentPage";
 
 export default function NewContentEntryPage({
-  params: paramsPromise,
+  params,
 }: {
   params: Promise<{ collection: string }>;
 }) {
-  const params = use(paramsPromise);
+  const { collection } = use(params);
   return (
     <AppShell section="Collections">
-      <PlaceholderPage
-        eyebrow={`Collection · ${params.collection}`}
-        title="New entry"
-        description="Create a new content entry using the collection's field schema."
-      />
+      <OryCMSCollectionContentPage collectionSlug={collection} mode="create" />
     </AppShell>
   );
 }
