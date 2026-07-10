@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { OryCMSDynamicField } from "./OryCMSDynamicField";
+import { adminContentEditPath, adminContentListPath } from "@/lib/admin-content-routes";
 import type { OryCMSCollectionDefinition } from "@/schema/collection.schema";
 import type { OryCMSContentEntry } from "@/types/content.types";
 
@@ -139,7 +140,7 @@ export function OryCMSContentForm({ collection, entry, onSuccess }: OryCMSConten
         onSuccess(json.data);
       } else if (!isEdit && json.data) {
         // Navigate to edit page after create
-        router.push(`/collections/${slug}/content/${json.data.id}/edit`);
+        router.push(adminContentEditPath(slug, json.data.id));
       }
     } catch {
       setGlobalError("Network error. Please try again.");
@@ -284,7 +285,7 @@ export function OryCMSContentForm({ collection, entry, onSuccess }: OryCMSConten
 
         <Button
           variant="ghost"
-          onClick={() => router.push(`/collections/${slug}/content`)}
+          onClick={() => router.push(adminContentListPath(slug))}
           disabled={saving}
         >
           Cancel
