@@ -231,7 +231,8 @@ describe("initFormData", () => {
 describe("sanitiseSlug", () => {
   it("lowercases input", () => expect(sanitiseSlug("HELLO")).toBe("hello"));
   it("replaces spaces with hyphens", () => expect(sanitiseSlug("hello world")).toBe("hello-world"));
-  it("collapses multiple spaces into a single hyphen", () => expect(sanitiseSlug("a  b")).toBe("a-b"));
+  it("collapses multiple spaces into a single hyphen", () =>
+    expect(sanitiseSlug("a  b")).toBe("a-b"));
   it("strips non-alphanumeric non-hyphen characters", () =>
     expect(sanitiseSlug("hello!@#world")).toBe("helloworld"));
   it("preserves existing hyphens", () => expect(sanitiseSlug("my-slug")).toBe("my-slug"));

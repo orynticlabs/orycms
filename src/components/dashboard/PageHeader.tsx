@@ -21,9 +21,7 @@ export function PageHeader({ eyebrow, title, description, actions, className }: 
       <div>
         {eyebrow && <div className="text-[12px] text-muted-foreground">{eyebrow}</div>}
         <h1 className="mt-1 text-[26px] font-semibold tracking-tight leading-tight">{title}</h1>
-        {description && (
-          <p className="mt-1 text-[13.5px] text-muted-foreground">{description}</p>
-        )}
+        {description && <p className="mt-1 text-[13.5px] text-muted-foreground">{description}</p>}
       </div>
       {actions && actions.length > 0 && (
         <div className="flex items-center gap-2">

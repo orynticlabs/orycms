@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { adminCollectionsPath } from "@/lib/admin-collection-routes";
+import { adminContentIndexPath } from "@/lib/admin-content-routes";
 
 type ChildItem = {
   label: string;
@@ -66,8 +68,8 @@ const NAV: { section: string; items: Item[] }[] = [
   {
     section: "Content",
     items: [
-      { label: "Collections", to: "/collections", icon: Layers },
-      { label: "Content", to: "/content", icon: FileText },
+      { label: "Collections", to: adminCollectionsPath(), icon: Layers },
+      { label: "Content", to: adminContentIndexPath(), icon: FileText },
       { label: "Media", to: "/media", icon: ImageIcon },
     ],
   },

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { adminContentCreatePath, adminContentEditPath } from "@/lib/admin-content-routes";
 import type { OryCMSCollectionDefinition } from "@/schema/collection.schema";
 import type { OryCMSContentEntry } from "@/types/content.types";
 
@@ -181,7 +182,7 @@ export function OryCMSContentTable({ collection }: OryCMSContentTableProps) {
 
         <Button
           size="sm"
-          onClick={() => router.push(`/collections/${slug}/content/new`)}
+          onClick={() => router.push(adminContentCreatePath(slug))}
           className="h-8 text-[12.5px]"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -295,7 +296,7 @@ export function OryCMSContentTable({ collection }: OryCMSContentTableProps) {
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7"
-                        onClick={() => router.push(`/collections/${slug}/content/${entry.id}/edit`)}
+                        onClick={() => router.push(adminContentEditPath(slug, entry.id))}
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </Button>

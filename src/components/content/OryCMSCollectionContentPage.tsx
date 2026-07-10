@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { OryCMSContentTable } from "./OryCMSContentTable";
 import { OryCMSContentForm } from "./OryCMSContentForm";
+import { adminContentListPath } from "@/lib/admin-content-routes";
 import type { OryCMSCollectionDefinition } from "@/schema/collection.schema";
 import type { OryCMSContentEntry } from "@/types/content.types";
 
@@ -88,7 +89,7 @@ export function OryCMSCollectionContentPage({
     );
   }
 
-  const listPath = `/collections/${collectionSlug}/content`;
+  const listPath = adminContentListPath(collectionSlug);
 
   if (mode === "list") {
     return (
