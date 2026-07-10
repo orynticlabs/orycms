@@ -10,22 +10,26 @@ const APP_VERSION = "v1.0.0";
 export function AppShell({
   children,
   section,
-  showInsights = true,
 }: {
   children: React.ReactNode;
   section: string;
-  showInsights?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
       <AppSidebar collapsed={collapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onToggle={() => setCollapsed((c) => !c)} section={section} />
+        <Topbar
+          onToggle={() => setCollapsed((c) => !c)}
+          section={section}
+          insightsOpen={insightsOpen}
+          onInsightsToggle={() => setInsightsOpen((o) => !o)}
+        />
         <div className="flex min-h-0 flex-1">
-          <main className="flex-1 overflow-y-auto">
-            {children}
+          <main className="flex flex-1 flex-col overflow-y-auto">
+            <div className="flex-1">{children}</div>
             <footer className="border-t border-border bg-surface/65">
               <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-2 px-6 py-3 text-[11.5px] text-muted-foreground lg:px-8">
                 <span>© 2026 OrynticLabs Private Limited. All rights reserved.</span>
@@ -33,7 +37,7 @@ export function AppShell({
               </div>
             </footer>
           </main>
-          {showInsights ? <InsightsPanel /> : null}
+          <InsightsPanel open={insightsOpen} />
         </div>
       </div>
     </div>

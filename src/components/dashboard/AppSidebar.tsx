@@ -12,28 +12,44 @@ import {
   Receipt,
   Users,
   Megaphone,
-  FileText,
   LineChart,
   Settings,
   ChevronDown,
   Sparkles,
+  Layers,
+  FileText,
+  Image as ImageIcon,
+  UserCog,
+  Shield,
+  Puzzle,
+  Database,
+  SearchCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+
+type ChildItem = {
+  label: string;
+  to: string;
+  icon?: React.ComponentType<{ className?: string }>;
+};
 
 type Item = {
   label: string;
   to?: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
-  children?: { label: string; to: string; icon: React.ComponentType<{ className?: string }> }[];
+  children?: ChildItem[];
 };
 
 const NAV: { section: string; items: Item[] }[] = [
   {
     section: "Workspace",
+    items: [{ label: "Overview", to: "/", icon: LayoutDashboard }],
+  },
+  {
+    section: "Commerce",
     items: [
-      { label: "Overview", to: "/", icon: LayoutDashboard },
       {
         label: "Commerce",
         icon: ShoppingBag,
@@ -48,11 +64,33 @@ const NAV: { section: string; items: Item[] }[] = [
     ],
   },
   {
+    section: "Content",
+    items: [
+      { label: "Collections", to: "/collections", icon: Layers },
+      { label: "Content", to: "/content", icon: FileText },
+      { label: "Media", to: "/media", icon: ImageIcon },
+    ],
+  },
+  {
+    section: "Identity",
+    items: [
+      { label: "Users", to: "/users", icon: UserCog },
+      { label: "Roles", to: "/roles", icon: Shield },
+    ],
+  },
+  {
     section: "Growth",
     items: [
       { label: "Marketing", to: "/marketing", icon: Megaphone },
-      { label: "Content", to: "/content", icon: FileText },
       { label: "Analytics", to: "/analytics", icon: LineChart },
+    ],
+  },
+  {
+    section: "Platform",
+    items: [
+      { label: "Plugins", to: "/plugins", icon: Puzzle },
+      { label: "Database", to: "/database", icon: Database },
+      { label: "SEO", to: "/seo", icon: SearchCheck },
     ],
   },
   {
