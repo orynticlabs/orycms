@@ -1,0 +1,53 @@
+name: Support Question
+description: Ask for help with setup, configuration, or usage.
+title: "[Help]: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out.
+        For broader conversations, please consider using GitHub Discussions as well.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      description: Describe your goal or what you are trying to achieve.
+      placeholder: Explain what you want to accomplish.
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried?
+      description: Tell us what you have already attempted.
+      placeholder: List the steps you have already taken.
+    validations:
+      required: true
+  - type: textarea
+    id: blocked
+    attributes:
+      label: Where are you stuck?
+      description: Share the exact issue, error, or point of confusion.
+      placeholder: Describe what is blocking you.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Add any screenshots, logs, or errors that may help.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: OryCMS version
+      description: Which version or commit are you using?
+      placeholder: e.g. main, v0.1.0, or a commit SHA
+  - type: input
+    id: environment
+    attributes:
+      label: Environment details
+      description: Share relevant OS, browser, runtime, and hosting details.
+      placeholder: e.g. Ubuntu 24.04, Node 22, Vercel

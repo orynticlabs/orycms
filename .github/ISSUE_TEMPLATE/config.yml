@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: OryCMS Discussions
+    url: https://github.com/orynticlabs/orycms/discussions
+    about: Ask questions, share ideas, and connect with the community in Discussions.
