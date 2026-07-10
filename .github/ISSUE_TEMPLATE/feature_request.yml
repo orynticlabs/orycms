@@ -1,0 +1,44 @@
+name: Feature Request
+description: Suggest an improvement or new feature for OryCMS.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea.
+        Clear problem statements help us evaluate requests much more effectively.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What problem, frustration, or gap are you trying to address?
+      placeholder: Describe the problem you are facing.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the feature or improvement you would like to see.
+      placeholder: Explain your proposed solution.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you considered any other approaches or workarounds?
+      placeholder: Share alternatives you have tried or considered.
+  - type: textarea
+    id: use_cases
+    attributes:
+      label: Use cases
+      description: How would this help you or other OryCMS users?
+      placeholder: Describe practical use cases for this feature.
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add links, examples, mockups, or references if helpful.
