@@ -1,18 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
+import { adminContentListPath } from "@/lib/admin-content-routes";
 
-import { use } from "react";
-import { AppShell } from "@/components/dashboard/AppShell";
-import { OryCMSCollectionContentPage } from "@/components/content/OryCMSCollectionContentPage";
-
-export default function CollectionContentPage({
+export default async function CollectionContentPage({
   params,
 }: {
   params: Promise<{ collection: string }>;
 }) {
-  const { collection } = use(params);
-  return (
-    <AppShell section="Collections">
-      <OryCMSCollectionContentPage collectionSlug={collection} mode="list" />
-    </AppShell>
-  );
+  const { collection } = await params;
+  redirect(adminContentListPath(collection));
 }
