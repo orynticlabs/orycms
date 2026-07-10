@@ -65,8 +65,10 @@ function LoginForm() {
         setIsSubmitting(false);
         return;
       }
-      const from = searchParams.get("from") ?? "/";
-      router.push(from);
+      const from = searchParams.get("from") ?? "";
+      // Only use `from` when it's a safe same-origin relative path
+      const dest = from && from.startsWith("/") && !from.startsWith("//") ? from : "/admin";
+      router.push(dest);
     } catch {
       setError("Network error. Please try again.");
       setIsSubmitting(false);
