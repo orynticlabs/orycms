@@ -7,13 +7,7 @@ import { Topbar } from "@/components/dashboard/Topbar";
 
 const APP_VERSION = "v1.0.0";
 
-export function AppShell({
-  children,
-  section,
-}: {
-  children: React.ReactNode;
-  section: string;
-}) {
+export function AppShell({ children, section }: { children: React.ReactNode; section: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const [insightsOpen, setInsightsOpen] = useState(false);
 
