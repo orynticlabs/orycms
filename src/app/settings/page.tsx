@@ -100,7 +100,7 @@ export default function SettingsPage() {
   const [internationalOrders, setInternationalOrders] = useState(false);
 
   return (
-    <AppShell section="Settings" showInsights={false}>
+    <AppShell section="Settings">
       <div className="mx-auto max-w-[1400px] space-y-6 p-6 lg:p-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

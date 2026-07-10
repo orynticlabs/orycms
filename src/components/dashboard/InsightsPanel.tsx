@@ -7,7 +7,7 @@ import {
   UserPlus,
   RefreshCcw,
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 const activity = [
   {
@@ -52,76 +52,84 @@ const insights = [
   },
 ];
 
-export function InsightsPanel() {
+export function InsightsPanel({ open }: { open: boolean }) {
   return (
-    <aside className="hidden xl:flex flex-col w-[320px] shrink-0 border-l border-border bg-surface-muted/40">
-      <div className="p-4 border-b border-border/70">
-        <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-          <Sparkles className="h-3 w-3" />
-          AI Insights
-        </div>
-        <div className="mt-3 space-y-2.5">
-          {insights.map((i) => (
-            <div key={i.title} className="rounded-lg border border-border bg-surface p-3">
-              <div className="flex items-center gap-1.5">
-                {i.tone === "opportunity" ? (
-                  <TrendingUp className="h-3.5 w-3.5 text-success" />
-                ) : (
-                  <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                )}
-                <span className="text-[12.5px] font-semibold">{i.title}</span>
-              </div>
-              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{i.body}</p>
-              <button className="mt-2 text-[11.5px] font-medium text-foreground hover:underline underline-offset-4">
-                {i.cta} →
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="p-4 border-b border-border/70">
-        <div className="flex items-center justify-between">
-          <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-            Inventory warnings
+    <aside
+      className={cn(
+        "shrink-0 overflow-hidden transition-[width] duration-300 ease-out",
+        open ? "w-[320px] border-l border-border" : "w-0",
+      )}
+    >
+      {/* Fixed-width inner so content never squishes during animation */}
+      <div className="flex h-full w-[320px] flex-col bg-surface-muted/40">
+        <div className="border-b border-border/70 p-4">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            <Sparkles className="h-3 w-3" />
+            AI Insights
           </div>
-          <span className="text-[11px] text-muted-foreground">3</span>
+          <div className="mt-3 space-y-2.5">
+            {insights.map((i) => (
+              <div key={i.title} className="rounded-lg border border-border bg-surface p-3">
+                <div className="flex items-center gap-1.5">
+                  {i.tone === "opportunity" ? (
+                    <TrendingUp className="h-3.5 w-3.5 text-success" />
+                  ) : (
+                    <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                  )}
+                  <span className="text-[12.5px] font-semibold">{i.title}</span>
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{i.body}</p>
+                <button className="mt-2 text-[11.5px] font-medium text-foreground underline-offset-4 hover:underline">
+                  {i.cta} →
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="mt-2.5 space-y-1.5">
-          {[
-            { name: "Ceramic Mug — Sand", stock: 4 },
-            { name: "Linen Tee — M", stock: 2 },
-            { name: "Canvas Tote — Natural", stock: 6 },
-          ].map((p) => (
-            <div key={p.name} className="flex items-center justify-between text-[12.5px] py-1">
-              <span className="truncate pr-2">{p.name}</span>
-              <span className="num shrink-0 tabular-nums text-warning font-medium">
-                {p.stock} left
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      <div className="p-4 flex-1 overflow-y-auto">
-        <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-          Live activity
-        </div>
-        <ol className="mt-3 space-y-3.5 relative">
-          <span className="absolute left-[7px] top-1 bottom-1 w-px bg-border" />
-          {activity.map((a, i) => {
-            const Icon = a.icon;
-            return (
-              <li key={i} className="relative pl-6">
-                <span className="absolute left-0 top-0.5 h-[15px] w-[15px] rounded-full bg-surface border border-border grid place-items-center">
-                  <Icon className={`h-2.5 w-2.5 ${a.iconClass}`} />
+        <div className="border-b border-border/70 p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              Inventory warnings
+            </div>
+            <span className="text-[11px] text-muted-foreground">3</span>
+          </div>
+          <div className="mt-2.5 space-y-1.5">
+            {[
+              { name: "Ceramic Mug — Sand", stock: 4 },
+              { name: "Linen Tee — M", stock: 2 },
+              { name: "Canvas Tote — Natural", stock: 6 },
+            ].map((p) => (
+              <div key={p.name} className="flex items-center justify-between py-1 text-[12.5px]">
+                <span className="truncate pr-2">{p.name}</span>
+                <span className="num shrink-0 tabular-nums font-medium text-warning">
+                  {p.stock} left
                 </span>
-                <div className="text-[12.5px] leading-snug">{a.text}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{a.meta}</div>
-              </li>
-            );
-          })}
-        </ol>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            Live activity
+          </div>
+          <ol className="relative mt-3 space-y-3.5">
+            <span className="absolute bottom-1 left-[7px] top-1 w-px bg-border" />
+            {activity.map((a, i) => {
+              const Icon = a.icon;
+              return (
+                <li key={i} className="relative pl-6">
+                  <span className="absolute left-0 top-0.5 grid h-[15px] w-[15px] place-items-center rounded-full border border-border bg-surface">
+                    <Icon className={`h-2.5 w-2.5 ${a.iconClass}`} />
+                  </span>
+                  <div className="text-[12.5px] leading-snug">{a.text}</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">{a.meta}</div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
       </div>
     </aside>
   );

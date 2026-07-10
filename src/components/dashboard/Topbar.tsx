@@ -12,6 +12,7 @@ import {
   Settings,
   Shield,
   ShoppingBag,
+  Sparkles,
   User,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -80,9 +81,13 @@ type NotificationItem = (typeof notifications)[number];
 export function Topbar({
   onToggle,
   section = "Overview",
+  insightsOpen = false,
+  onInsightsToggle,
 }: {
   onToggle: () => void;
   section?: string;
+  insightsOpen?: boolean;
+  onInsightsToggle?: () => void;
 }) {
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -225,6 +230,19 @@ export function Topbar({
           </div>
 
           <div className="flex items-center gap-1">
+            <button
+              onClick={onInsightsToggle}
+              title="AI Insights"
+              className={cn(
+                "grid h-8 w-8 place-items-center rounded-md transition-colors",
+                insightsOpen
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
+            >
+              <Sparkles className="h-4 w-4" />
+            </button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="hidden sm:inline-flex h-8 items-center gap-2 rounded-md border border-border bg-surface px-2.5 text-[12.5px] font-medium text-foreground/80 transition-colors hover:border-border-strong hover:bg-accent/40">
