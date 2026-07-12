@@ -10,6 +10,7 @@ export {
   OryCMSSchemaError,
   defineOryCMSCollection,
   registerOryCMSCollection,
+  upsertOryCMSCollectionInRegistry,
   getOryCMSCollection,
   listOryCMSCollections,
   updateOryCMSCollectionSchema,
@@ -17,3 +18,18 @@ export {
   validateOryCMSCollectionSchemaPure,
   clearOryCMSRegistry,
 } from "./schema.engine";
+
+export {
+  OryCMSCollectionPersistenceError,
+  saveOryCMSCollectionSchema,
+  updateOryCMSPersistedCollection,
+  deleteOryCMSPersistedCollection,
+  getOryCMSPersistedCollection,
+  listOryCMSPersistedCollections,
+  loadOryCMSCollectionsIntoRegistry,
+} from "./schema.persistence";
+
+export {
+  loadOryCMSPersistedCollectionsOnStartup,
+  resetOryCMSStartupLoaderForTests,
+} from "./schema.startup";

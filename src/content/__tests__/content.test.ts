@@ -11,8 +11,8 @@ import {
 } from "../content.engine";
 import { validateOryCMSContentData, stripOryCMSPrivateFields } from "../content.validator";
 import { OryCMSContentError } from "../content.errors";
-import { registerOryCMSCollection, clearOryCMSRegistry } from "@/schema/schema.engine";
-import type { OryCMSCollectionDefinition } from "@/schema/collection.schema";
+import { registerOryCMSCollection, clearOryCMSRegistry } from "@/schema";
+import type { OryCMSCollectionDefinition } from "@/schema";
 
 // ── Test collections ──────────────────────────────────────────────────────────
 

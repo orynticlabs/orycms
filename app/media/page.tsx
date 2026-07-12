@@ -1,16 +1,12 @@
 "use client";
 
 import { AppShell } from "@/components/dashboard/AppShell";
-import { PlaceholderPage } from "@/components/dashboard/PlaceholderPage";
+import { OryCMSMediaLibrary } from "@/components/media/OryCMSMediaLibrary";
 
 export default function MediaPage() {
   return (
     <AppShell section="Media">
-      <PlaceholderPage
-        eyebrow="Asset management"
-        title="Media library"
-        description="Upload, organize, and reference images, videos, documents, and other assets across your content."
-      />
+      <OryCMSMediaLibrary />
     </AppShell>
   );
 }

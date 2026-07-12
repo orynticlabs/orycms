@@ -9,7 +9,7 @@ import {
   legacyCollectionContentCreatePath,
   legacyCollectionContentEditPath,
   legacyCollectionContentListPath,
-} from "@/lib/admin-content-routes";
+} from "@/admin";
 
 describe("admin content routes", () => {
   it("builds canonical admin content routes", () => {

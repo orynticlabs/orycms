@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  adminCollectionCreatePath,
-  adminCollectionEditPath,
-  adminCollectionsPath,
-} from "@/lib/admin-collection-routes";
+import { adminCollectionCreatePath, adminCollectionEditPath, adminCollectionsPath } from "@/admin";
 import {
   apiEndpointPreview,
   collectionDefinitionToForm,
@@ -13,7 +9,7 @@ import {
   createEmptyCollectionSchemaForm,
   slugifyCollectionName,
   validateCollectionSchemaForm,
-} from "@/lib/collection-schema-form";
+} from "@/admin";
 import type { OryCMSCollectionDefinition } from "@/schema";
 
 const AUTHORS_COLLECTION: OryCMSCollectionDefinition = {

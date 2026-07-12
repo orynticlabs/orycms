@@ -1,18 +1,12 @@
 import type { Pool } from "pg";
-import type { OryCMSCollectionDefinition } from "@/schema/collection.schema";
-import { getOryCMSCollection } from "@/schema/schema.engine";
-import type {
-  OryCMSContentData,
-  OryCMSContentEntry,
-  OryCMSContentStatus,
-} from "@/types/content.types";
-import type {
-  OryCMSDatabaseQueryFilter,
-  OryCMSDatabaseSortOptions,
-} from "@/database/adapter.types";
+import type { OryCMSCollectionDefinition } from "@/schema";
+import { getOryCMSCollection } from "@/schema";
+import type { OryCMSContentData, OryCMSContentEntry, OryCMSContentStatus } from "@/types";
+import type { OryCMSDatabaseQueryFilter, OryCMSDatabaseSortOptions } from "@/database";
 import { getOryCMSPool } from "@/lib/db";
 import { OryCMSContentError } from "./content.errors";
 import { validateOryCMSContentData, stripOryCMSPrivateFields } from "./content.validator";
+import { buildOryCMSHookContext, runOryCMSBeforeHooks, runOryCMSAfterHooks } from "@/hooks";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -198,13 +192,15 @@ export async function createOryCMSContentEntry(
   const col = resolveCollection(collectionSlug);
   validateOryCMSContentData(col, input.data, true);
 
+  const mutableData: Record<string, unknown> = { ...input.data };
+  const beforeCtx = buildOryCMSHookContext("beforeCreate", collectionSlug, mutableData, null);
+  await runOryCMSBeforeHooks("beforeCreate", beforeCtx);
+
   const table = deriveTable(col);
   const hasDraft = col.draft?.enabled;
-  const isDraft = input.asDraft !== false || hasDraft; // default draft when collection supports it
+  const isDraft = input.asDraft !== false || hasDraft;
 
-  const fieldData = { ...input.data };
-
-  // System columns
+  const fieldData = { ...beforeCtx.data };
   const cols: string[] = Object.keys(fieldData).map((k) => `"${k}"`);
   const placeholders: string[] = Object.keys(fieldData).map((_, i) => `$${i + 1}`);
   const vals: unknown[] = Object.values(fieldData);
@@ -220,7 +216,22 @@ export async function createOryCMSContentEntry(
     `INSERT INTO "${table}" (${cols.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING *`,
     vals,
   );
-  return rowToEntry(col, res.rows[0] as Record<string, unknown>);
+  const entry = rowToEntry(col, res.rows[0] as Record<string, unknown>);
+
+  try {
+    await runOryCMSAfterHooks(
+      "afterCreate",
+      buildOryCMSHookContext(
+        "afterCreate",
+        collectionSlug,
+        entry as unknown as Record<string, unknown>,
+        null,
+      ),
+    );
+  } catch (err) {
+    console.error("[OryCMS] afterCreate hook failed:", err);
+  }
+  return entry;
 }
 
 export async function updateOryCMSContentEntry(
@@ -232,24 +243,47 @@ export async function updateOryCMSContentEntry(
   const col = resolveCollection(collectionSlug);
   validateOryCMSContentData(col, input.data, false);
 
-  // Ensure entry exists
-  await getOryCMSContentEntry(collectionSlug, id, pool);
+  const previous = await getOryCMSContentEntry(collectionSlug, id, pool);
+
+  const mutableData: Record<string, unknown> = { ...input.data };
+  const beforeCtx = buildOryCMSHookContext(
+    "beforeUpdate",
+    collectionSlug,
+    mutableData,
+    previous as unknown as Record<string, unknown>,
+  );
+  await runOryCMSBeforeHooks("beforeUpdate", beforeCtx);
 
   const table = deriveTable(col);
-  const keys = Object.keys(input.data);
+  const keys = Object.keys(beforeCtx.data);
   if (keys.length === 0) {
     throw new OryCMSContentError("FIELD_REQUIRED", "At least one field must be provided.", 422);
   }
 
   const sets = keys.map((k, i) => `"${k}" = $${i + 1}`).join(", ");
-  const vals = [...Object.values(input.data), id];
+  const vals = [...Object.values(beforeCtx.data), id];
   const idIdx = vals.length;
 
   const res = await pool.query(
     `UPDATE "${table}" SET ${sets}, "updatedAt" = NOW() WHERE "id" = $${idIdx} RETURNING *`,
     vals,
   );
-  return rowToEntry(col, res.rows[0] as Record<string, unknown>);
+  const entry = rowToEntry(col, res.rows[0] as Record<string, unknown>);
+
+  try {
+    await runOryCMSAfterHooks(
+      "afterUpdate",
+      buildOryCMSHookContext(
+        "afterUpdate",
+        collectionSlug,
+        entry as unknown as Record<string, unknown>,
+        previous as unknown as Record<string, unknown>,
+      ),
+    );
+  } catch (err) {
+    console.error("[OryCMS] afterUpdate hook failed:", err);
+  }
+  return entry;
 }
 
 export async function deleteOryCMSContentEntry(
@@ -258,9 +292,34 @@ export async function deleteOryCMSContentEntry(
   pool: Pool = getOryCMSPool(),
 ): Promise<void> {
   const col = resolveCollection(collectionSlug);
-  await getOryCMSContentEntry(collectionSlug, id, pool); // 404 if missing
+  const entry = await getOryCMSContentEntry(collectionSlug, id, pool);
+
+  await runOryCMSBeforeHooks(
+    "beforeDelete",
+    buildOryCMSHookContext(
+      "beforeDelete",
+      collectionSlug,
+      entry as unknown as Record<string, unknown>,
+      null,
+    ),
+  );
+
   const table = deriveTable(col);
   await pool.query(`DELETE FROM "${table}" WHERE "id" = $1`, [id]);
+
+  try {
+    await runOryCMSAfterHooks(
+      "afterDelete",
+      buildOryCMSHookContext(
+        "afterDelete",
+        collectionSlug,
+        entry as unknown as Record<string, unknown>,
+        null,
+      ),
+    );
+  } catch (err) {
+    console.error("[OryCMS] afterDelete hook failed:", err);
+  }
 }
 
 export async function publishOryCMSContentEntry(
@@ -283,12 +342,37 @@ export async function publishOryCMSContentEntry(
     );
   }
 
+  await runOryCMSBeforeHooks(
+    "beforePublish",
+    buildOryCMSHookContext(
+      "beforePublish",
+      collectionSlug,
+      entry as unknown as Record<string, unknown>,
+      null,
+    ),
+  );
+
   const table = deriveTable(col);
   const res = await pool.query(
     `UPDATE "${table}" SET "_isDraft" = false, "_publishedAt" = NOW(), "updatedAt" = NOW() WHERE "id" = $1 RETURNING *`,
     [id],
   );
-  return rowToEntry(col, res.rows[0] as Record<string, unknown>);
+  const published = rowToEntry(col, res.rows[0] as Record<string, unknown>);
+
+  try {
+    await runOryCMSAfterHooks(
+      "afterPublish",
+      buildOryCMSHookContext(
+        "afterPublish",
+        collectionSlug,
+        published as unknown as Record<string, unknown>,
+        entry as unknown as Record<string, unknown>,
+      ),
+    );
+  } catch (err) {
+    console.error("[OryCMS] afterPublish hook failed:", err);
+  }
+  return published;
 }
 
 export async function unpublishOryCMSContentEntry(
@@ -311,10 +395,35 @@ export async function unpublishOryCMSContentEntry(
     );
   }
 
+  await runOryCMSBeforeHooks(
+    "beforeUnpublish",
+    buildOryCMSHookContext(
+      "beforeUnpublish",
+      collectionSlug,
+      entry as unknown as Record<string, unknown>,
+      null,
+    ),
+  );
+
   const table = deriveTable(col);
   const res = await pool.query(
     `UPDATE "${table}" SET "_isDraft" = true, "updatedAt" = NOW() WHERE "id" = $1 RETURNING *`,
     [id],
   );
-  return rowToEntry(col, res.rows[0] as Record<string, unknown>);
+  const unpublished = rowToEntry(col, res.rows[0] as Record<string, unknown>);
+
+  try {
+    await runOryCMSAfterHooks(
+      "afterUnpublish",
+      buildOryCMSHookContext(
+        "afterUnpublish",
+        collectionSlug,
+        unpublished as unknown as Record<string, unknown>,
+        entry as unknown as Record<string, unknown>,
+      ),
+    );
+  } catch (err) {
+    console.error("[OryCMS] afterUnpublish hook failed:", err);
+  }
+  return unpublished;
 }

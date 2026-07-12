@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { OryCMSContentTable } from "./OryCMSContentTable";
 import { OryCMSContentForm } from "./OryCMSContentForm";
-import { adminContentListPath } from "@/lib/admin-content-routes";
-import type { OryCMSCollectionDefinition } from "@/schema/collection.schema";
-import type { OryCMSContentEntry } from "@/types/content.types";
+import { adminContentListPath } from "@/admin";
+import type { OryCMSCollectionDefinition } from "@/schema";
+import type { OryCMSContentEntry } from "@/types";
 
 type Mode = "list" | "create" | "edit";
 

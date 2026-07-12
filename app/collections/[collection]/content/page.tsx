@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { adminContentListPath } from "@/lib/admin-content-routes";
+import { adminContentListPath } from "@/admin";
 
 export default async function CollectionContentPage({
   params,

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { adminContentEditPath } from "@/lib/admin-content-routes";
+import { adminContentEditPath } from "@/admin";
 
 export default async function EditContentEntryPage({
   params,

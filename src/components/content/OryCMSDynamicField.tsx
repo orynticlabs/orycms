@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { OryCMSSchemaField } from "@/schema/collection.schema";
+import type { OryCMSSchemaField } from "@/schema";
 
 interface OryCMSDynamicFieldProps {
   field: OryCMSSchemaField;

@@ -16,9 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { adminContentCreatePath, adminContentEditPath } from "@/lib/admin-content-routes";
-import type { OryCMSCollectionDefinition } from "@/schema/collection.schema";
-import type { OryCMSContentEntry } from "@/types/content.types";
+import { adminContentCreatePath, adminContentEditPath } from "@/admin";
+import type { OryCMSCollectionDefinition } from "@/schema";
+import type { OryCMSContentEntry } from "@/types";
 
 interface OryCMSContentTableProps {
   collection: OryCMSCollectionDefinition;

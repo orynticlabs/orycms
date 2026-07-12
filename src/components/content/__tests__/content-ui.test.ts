@@ -3,8 +3,8 @@
  * No DOM rendering — tests the utility functions extracted from the components.
  */
 import { describe, it, expect } from "vitest";
-import type { OryCMSCollectionDefinition } from "@/schema/collection.schema";
-import type { OryCMSContentEntry } from "@/types/content.types";
+import type { OryCMSCollectionDefinition } from "@/schema";
+import type { OryCMSContentEntry } from "@/types";
 
 // ── Helpers under test (extracted to be independently testable) ───────────────
 

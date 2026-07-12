@@ -3,9 +3,9 @@ import type {
   OryCMSDatabaseAdapterType,
   OryCMSMigrationResult,
   OryCMSAdapterMigration,
-} from "@/database/adapter.types";
-import type { OryCMSDatabaseAdapter } from "@/database/adapter.interface";
-import { getOryCMSDatabaseAdapter, listOryCMSDatabaseAdapters } from "@/database/registry";
+} from "@/database";
+import type { OryCMSDatabaseAdapter } from "@/database";
+import { getOryCMSDatabaseAdapter, listOryCMSDatabaseAdapters } from "@/database";
 
 let _activeType: OryCMSDatabaseAdapterType | null = null;
 

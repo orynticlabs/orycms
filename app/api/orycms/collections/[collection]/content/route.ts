@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { listOryCMSContentEntries, createOryCMSContentEntry, OryCMSContentError } from "@/content";
 import { protectOryCMSAdminRoute, OryCMSAuthError } from "@/auth";
-import type {
-  OryCMSDatabaseQueryFilter,
-  OryCMSDatabaseSortOptions,
-} from "@/database/adapter.types";
+import type { OryCMSDatabaseQueryFilter, OryCMSDatabaseSortOptions } from "@/database";
 
 type RouteCtx = { params: Promise<{ collection: string }> };
 

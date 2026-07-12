@@ -4,6 +4,7 @@ import type {
   OryCMSSchemaValidationResult,
 } from "./collection.schema";
 import { validateOryCMSCollectionSchema } from "./schema.validator";
+import { registerOryCMSCollectionHooks, unregisterOryCMSCollectionHooks } from "@/hooks";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Error class
@@ -59,7 +60,7 @@ export function defineOryCMSCollection(
 export function registerOryCMSCollection(
   definition: OryCMSCollectionDefinition,
 ): OryCMSCollectionDefinition {
-  const registeredSlugs = _slugSet();
+  const registeredSlugs = new Set(_slugSet());
   const registeredCollectionSlugs = _slugSet();
 
   const result = validateOryCMSCollectionSchema(definition, {
@@ -75,6 +76,38 @@ export function registerOryCMSCollection(
   }
 
   _registry.set(definition.slug, definition);
+  if (definition.hooks) registerOryCMSCollectionHooks(definition.slug, definition.hooks);
+  return definition;
+}
+
+/**
+ * Validates and inserts/replaces a collection in the registry.
+ * Intended for persisted schema hydration where all known relation targets can be supplied up-front.
+ */
+export function upsertOryCMSCollectionInRegistry(
+  definition: OryCMSCollectionDefinition,
+  knownCollectionSlugs: ReadonlySet<string> = _slugSet(),
+): OryCMSCollectionDefinition {
+  const registeredSlugs = new Set(_slugSet());
+  registeredSlugs.delete(definition.slug);
+
+  const result = validateOryCMSCollectionSchema(definition, {
+    registeredSlugs,
+    registeredCollectionSlugs: knownCollectionSlugs,
+  });
+
+  if (!result.valid) {
+    _throw(
+      `upsertOryCMSCollectionInRegistry: cannot hydrate "${definition?.slug ?? "??"}"`,
+      result.issues,
+    );
+  }
+
+  _registry.set(definition.slug, definition);
+  if (definition.hooks) {
+    unregisterOryCMSCollectionHooks(definition.slug);
+    registerOryCMSCollectionHooks(definition.slug, definition.hooks);
+  }
   return definition;
 }
 
@@ -138,6 +171,7 @@ export function removeOryCMSCollection(slug: string): void {
     ]);
   }
   _registry.delete(slug);
+  unregisterOryCMSCollectionHooks(slug);
 }
 
 /**

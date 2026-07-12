@@ -27,8 +27,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { adminCollectionsPath } from "@/lib/admin-collection-routes";
-import { adminContentIndexPath } from "@/lib/admin-content-routes";
+import { adminCollectionsPath } from "@/admin";
+import { adminContentIndexPath } from "@/admin";
 
 type ChildItem = {
   label: string;

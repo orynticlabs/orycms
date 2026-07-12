@@ -5,7 +5,8 @@ export type OryCMSAuthErrorCode =
   | "ACCOUNT_INACTIVE"
   | "UNAUTHORIZED"
   | "SESSION_EXPIRED"
-  | "WEAK_PASSWORD";
+  | "WEAK_PASSWORD"
+  | "FORBIDDEN";
 
 export class OryCMSAuthError extends Error {
   readonly code: OryCMSAuthErrorCode;

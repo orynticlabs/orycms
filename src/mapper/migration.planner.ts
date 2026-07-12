@@ -1,11 +1,5 @@
-import type {
-  OryCMSCollectionDefinition,
-  OryCMSSchemaRelationField,
-} from "@/schema/collection.schema";
-import type {
-  OryCMSDatabaseAdapterType,
-  OryCMSDatabaseAdapterCapabilities,
-} from "@/database/adapter.types";
+import type { OryCMSCollectionDefinition, OryCMSSchemaRelationField } from "@/schema";
+import type { OryCMSDatabaseAdapterType, OryCMSDatabaseAdapterCapabilities } from "@/database";
 import type {
   OryCMSCollectionMigrationPlan,
   OryCMSMappedDatabaseField,

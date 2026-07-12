@@ -6,7 +6,7 @@ import { Edit, Loader2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/dashboard/PageHeader";
-import { adminCollectionCreatePath, adminCollectionEditPath } from "@/lib/admin-collection-routes";
+import { adminCollectionCreatePath, adminCollectionEditPath } from "@/admin";
 import type { OryCMSCollectionDefinition } from "@/schema";
 
 export function OryCMSCollectionsAdminPage() {
