@@ -1,0 +1,59 @@
+{
+  "name": "create-orycms",
+  "version": "0.1.0",
+  "description": "Scaffold OryCMS into a new or existing Next.js project — supports App Router and Pages Router",
+  "type": "module",
+  "bin": {
+    "create-orycms": "./dist/create-orycms/src/index.js"
+  },
+  "main": "./dist/create-orycms/src/index.js",
+  "exports": {
+    ".": "./dist/create-orycms/src/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run clean && npm run build && npm run typecheck && npm run test"
+  },
+  "keywords": [
+    "create-orycms",
+    "orycms",
+    "cms",
+    "nextjs",
+    "scaffold",
+    "create",
+    "headless-cms",
+    "content-management"
+  ],
+  "author": "OrynticLabs <support@orynticlabs.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/orynticlabs/orycms#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/orynticlabs/orycms.git",
+    "directory": "packages/create-orycms"
+  },
+  "bugs": {
+    "url": "https://github.com/orynticlabs/orycms/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@inquirer/prompts": "^8.5.2",
+    "commander": "^15.0.0"
+  }
+}

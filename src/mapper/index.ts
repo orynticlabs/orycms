@@ -13,3 +13,21 @@ export { validateOryCMSAdapterCapabilities } from "./capabilities.validator";
 
 // Migration planner
 export { generateOryCMSCollectionMigrationPlan } from "./migration.planner";
+
+export {
+  compareOryCMSCollectionSchema,
+  generateOryCMSSchemaDiff,
+  generateOryCMSMigrationPreview,
+  validateOryCMSMigrationSafety,
+  introspectOryCMSPostgreSQLTable,
+} from "./schema.diff";
+export type {
+  OryCMSActualPostgreSQLField,
+  OryCMSActualPostgreSQLForeignKey,
+  OryCMSActualPostgreSQLIndex,
+  OryCMSActualPostgreSQLSchema,
+  OryCMSMigrationPreview,
+  OryCMSMigrationSafetyResult,
+  OryCMSSchemaDiffOperation,
+  OryCMSSchemaDiffOperationType,
+} from "./schema.diff";

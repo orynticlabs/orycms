@@ -11,7 +11,7 @@ import type {
   OryCMSAdapterMigration,
   OryCMSMigrationResult,
 } from "../adapter.types";
-import type { OryCMSCollectionMigrationPlan } from "@/mapper/mapper.types";
+import type { OryCMSCollectionMigrationPlan } from "@/mapper";
 
 // Diagnostics only — never branches query logic on provider
 function detectProvider(url: string): "neon" | "supabase" | "postgresql" {

@@ -1,7 +1,4 @@
-import type {
-  OryCMSDatabaseAdapterType,
-  OryCMSDatabaseAdapterCapabilities,
-} from "@/database/adapter.types";
+import type { OryCMSDatabaseAdapterType, OryCMSDatabaseAdapterCapabilities } from "@/database";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mapped field

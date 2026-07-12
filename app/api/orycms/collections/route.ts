@@ -2,62 +2,44 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { OryCMSAuthError, protectOryCMSAdminRoute } from "@/auth";
 import {
+  loadOryCMSPersistedCollectionsOnStartup,
   listOryCMSCollections,
-  registerOryCMSCollection,
-  validateOryCMSCollectionSchema,
+  OryCMSCollectionPersistenceError,
+  saveOryCMSCollectionSchema,
 } from "@/schema";
 import type { OryCMSCollectionDefinition } from "@/schema";
+import { requireOryCMSPermission } from "@/rbac";
 
 // GET /api/orycms/collections — list all registered collection schemas
 export async function GET(_request: NextRequest) {
+  await loadOryCMSPersistedCollectionsOnStartup();
   const collections = listOryCMSCollections();
   return NextResponse.json({ success: true, data: collections });
 }
 
-function canManageCollections(roleName: string | null): boolean {
-  return roleName === "Owner" || roleName === "Admin";
-}
-
-// POST /api/orycms/collections — create a new collection schema in the registry only
+// POST /api/orycms/collections — persist a new collection schema
 export async function POST(request: NextRequest) {
   try {
+    await loadOryCMSPersistedCollectionsOnStartup();
     const session = await protectOryCMSAdminRoute(request);
-    if (!canManageCollections(session.roleName)) {
-      return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "Owner or Admin role required." } },
-        { status: 403 },
-      );
-    }
+    await requireOryCMSPermission(session, "collections", "create");
 
     const body = (await request.json()) as OryCMSCollectionDefinition;
-    const existingSlugs = new Set(listOryCMSCollections().map((collection) => collection.slug));
-    const relationTargets = new Set(existingSlugs);
-    if (body.slug) relationTargets.add(body.slug);
-    const result = validateOryCMSCollectionSchema(body, {
-      registeredSlugs: existingSlugs,
-      registeredCollectionSlugs: relationTargets,
-    });
-
-    if (!result.valid) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "SCHEMA_VALIDATION_ERROR",
-            message: "Collection schema is invalid.",
-            issues: result.issues,
-          },
-        },
-        { status: 400 },
-      );
-    }
-
-    const collection = registerOryCMSCollection(body);
+    const collection = await saveOryCMSCollectionSchema(body);
     return NextResponse.json({ success: true, data: collection }, { status: 201 });
   } catch (err) {
     if (err instanceof OryCMSAuthError) {
       return NextResponse.json(
         { success: false, error: { code: err.code, message: err.message } },
+        { status: err.statusCode },
+      );
+    }
+    if (err instanceof OryCMSCollectionPersistenceError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: err.code, message: err.message, issues: err.issues },
+        },
         { status: err.statusCode },
       );
     }

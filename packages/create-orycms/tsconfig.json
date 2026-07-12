@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "moduleResolution": "Bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "paths": {
+      "@/*": ["../../src/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "../cli/src/commands/init/database/vendors.d.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

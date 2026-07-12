@@ -18,7 +18,7 @@ import {
   createMigrationFromCollectionPlan,
 } from "../postgresql.adapter";
 import type { OryCMSDatabaseConnectionConfig } from "../../adapter.types";
-import type { OryCMSCollectionMigrationPlan } from "@/mapper/mapper.types";
+import type { OryCMSCollectionMigrationPlan } from "@/mapper";
 
 const TEST_URL = "postgresql://user:pass@localhost:5432/testdb";
 const NEON_URL = "postgresql://user:pass@ep-example.us-east-2.aws.neon.tech/mydb?sslmode=require";

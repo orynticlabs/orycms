@@ -1,5 +1,5 @@
-import type { OryCMSSchemaField } from "@/schema/collection.schema";
-import type { OryCMSDatabaseAdapterType } from "@/database/adapter.types";
+import type { OryCMSSchemaField } from "@/schema";
+import type { OryCMSDatabaseAdapterType } from "@/database";
 import type { OryCMSMappedDatabaseField, OryCMSMappedFieldReference } from "./mapper.types";
 
 // ─────────────────────────────────────────────────────────────────────────────

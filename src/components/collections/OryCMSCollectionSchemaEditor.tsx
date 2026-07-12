@@ -19,7 +19,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/dashboard/PageHeader";
-import { adminCollectionsPath } from "@/lib/admin-collection-routes";
+import { adminCollectionsPath } from "@/admin";
 import {
   ORYCMS_FIELD_TYPES,
   apiEndpointPreview,
@@ -31,7 +31,7 @@ import {
   validateCollectionSchemaForm,
   type CollectionFieldFormState,
   type CollectionSchemaFormState,
-} from "@/lib/collection-schema-form";
+} from "@/admin";
 import type {
   OryCMSCollectionDefinition,
   OryCMSSchemaFieldType,

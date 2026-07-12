@@ -182,6 +182,8 @@ export interface OryCMSCollectionAccess {
 // Top-level collection definition — the developer-facing schema DSL
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { OryCMSCollectionHooks } from "@/hooks";
+
 export interface OryCMSCollectionDefinition {
   /** Human-readable name, e.g. "Blog Post". */
   name: string;
@@ -196,6 +198,8 @@ export interface OryCMSCollectionDefinition {
   draft?: OryCMSCollectionDraftConfig;
   seo?: OryCMSCollectionSeoConfig;
   access?: OryCMSCollectionAccess;
+  /** Lifecycle hooks invoked around content operations for this collection. */
+  hooks?: OryCMSCollectionHooks;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

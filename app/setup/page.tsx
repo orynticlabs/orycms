@@ -97,7 +97,7 @@ export default function SetupPage() {
             <div>
               <div className="text-[18px] font-semibold tracking-tight">OryCMS</div>
               <div className="text-[12px] text-muted-foreground">
-                by OrynticLabs Private Limited
+                By OrynticLabs Private Limited
               </div>
             </div>
             <Badge variant="outline" className="border-border bg-surface/80 px-3 py-1 text-[11px]">

@@ -1,5 +1,5 @@
-import type { OryCMSCollectionDefinition } from "@/schema/collection.schema";
-import type { OryCMSDatabaseAdapterType } from "@/database/adapter.types";
+import type { OryCMSCollectionDefinition } from "@/schema";
+import type { OryCMSDatabaseAdapterType } from "@/database";
 import type {
   OryCMSMappedDatabaseField,
   OryCMSMappedDatabaseIndex,

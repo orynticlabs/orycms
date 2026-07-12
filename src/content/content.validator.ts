@@ -1,5 +1,5 @@
-import type { OryCMSCollectionDefinition, OryCMSSchemaField } from "@/schema/collection.schema";
-import type { OryCMSContentData } from "@/types/content.types";
+import type { OryCMSCollectionDefinition, OryCMSSchemaField } from "@/schema";
+import type { OryCMSContentData } from "@/types";
 import { OryCMSContentError } from "./content.errors";
 
 /** System fields injected by the engine — never treated as user-defined fields. */
