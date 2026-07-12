@@ -33,7 +33,7 @@ MariaDB connection:
     return `
 MariaDB migrations:
   Run OryCMS core schema installer:
-    import { installOryCMSCoreSchema } from "@orycms/core";
+    import { installOryCMSCoreSchema } from "@ory-cms/core";
     await installOryCMSCoreSchema(adapter);
 
   Or use a migration tool such as Flyway or Liquibase:

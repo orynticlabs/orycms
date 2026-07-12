@@ -13,10 +13,10 @@ type TsConfig = {
 
 /** OryCMS path aliases added to tsconfig.json. */
 const ORYCMS_PATHS: Record<string, string[]> = {
-  "@orycms/*": ["./src/*"],
+  "@ory-cms/*": ["./src/*"],
 };
 
-const ORYCMS_SENTINEL_KEY = "@orycms/*";
+const ORYCMS_SENTINEL_KEY = "@ory-cms/*";
 
 // ── Idempotent runner ─────────────────────────────────────────────────────────
 

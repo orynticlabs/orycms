@@ -61,8 +61,8 @@ describe("buildOryCMSConfig", () => {
   });
 
   it("includes plugin entries when plugins are selected", () => {
-    const content = buildOryCMSConfig(makeCtx({ plugins: ["@orycms/plugin-seo"] }));
-    expect(content).toContain("@orycms/plugin-seo");
+    const content = buildOryCMSConfig(makeCtx({ plugins: ["@ory-cms/plugin-seo"] }));
+    expect(content).toContain("@ory-cms/plugin-seo");
   });
 
   it("produces empty entries array when no plugins selected", () => {
@@ -248,7 +248,7 @@ describe("generateTsConfig", () => {
     expect(generateTsConfig(makeCtx()).status).toBe("skipped");
   });
 
-  it("adds @orycms/* paths to tsconfig", () => {
+  it("adds @ory-cms/* paths to tsconfig", () => {
     writeFileSync(
       join(cwd, "tsconfig.json"),
       JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
@@ -258,13 +258,13 @@ describe("generateTsConfig", () => {
     const ts = readJsonFile<{ compilerOptions: { paths: Record<string, string[]> } }>(
       join(cwd, "tsconfig.json"),
     );
-    expect(ts.compilerOptions.paths["@orycms/*"]).toBeDefined();
+    expect(ts.compilerOptions.paths["@ory-cms/*"]).toBeDefined();
   });
 
-  it("skips when @orycms/* already present", () => {
+  it("skips when @ory-cms/* already present", () => {
     writeFileSync(
       join(cwd, "tsconfig.json"),
-      JSON.stringify({ compilerOptions: { paths: { "@orycms/*": ["./src/*"] } } }),
+      JSON.stringify({ compilerOptions: { paths: { "@ory-cms/*": ["./src/*"] } } }),
     );
     expect(generateTsConfig(makeCtx()).status).toBe("skipped");
   });
@@ -282,8 +282,8 @@ describe("generateTsConfig", () => {
 // ── package-json-updater ──────────────────────────────────────────────────────
 
 describe("resolveDependencies", () => {
-  it("always includes @orycms/core", () => {
-    expect(resolveDependencies("postgresql", "none", [])).toContain("@orycms/core");
+  it("always includes @ory-cms/core", () => {
+    expect(resolveDependencies("postgresql", "none", [])).toContain("@ory-cms/core");
   });
 
   it("includes DB packages for postgresql", () => {
@@ -298,8 +298,8 @@ describe("resolveDependencies", () => {
   });
 
   it("includes plugin packages", () => {
-    const deps = resolveDependencies("postgresql", "none", ["@orycms/plugin-seo"]);
-    expect(deps).toContain("@orycms/plugin-seo");
+    const deps = resolveDependencies("postgresql", "none", ["@ory-cms/plugin-seo"]);
+    expect(deps).toContain("@ory-cms/plugin-seo");
   });
 
   it("no auth packages when auth=none", () => {
@@ -319,16 +319,16 @@ describe("generatePackageJson", () => {
     const result = generatePackageJson(makeCtx());
     expect(result.status).toBe("updated");
     expect(result.toInstall.length).toBeGreaterThan(0);
-    expect(result.toInstall).toContain("@orycms/core");
+    expect(result.toInstall).toContain("@ory-cms/core");
   });
 
   it("skips deps already present", () => {
     const existing = {
-      dependencies: { "@orycms/core": "^1.0.0", pg: "^8", "@types/pg": "^8", "better-auth": "^1" },
+      dependencies: { "@ory-cms/core": "^1.0.0", pg: "^8", "@types/pg": "^8", "better-auth": "^1" },
     };
     writeFileSync(join(cwd, "package.json"), JSON.stringify(existing));
     const result = generatePackageJson(makeCtx());
-    expect(result.toInstall).not.toContain("@orycms/core");
+    expect(result.toInstall).not.toContain("@ory-cms/core");
   });
 
   it("is idempotent — second run adds nothing new", () => {

@@ -78,18 +78,18 @@ describe("runInit", () => {
     expect(readTextFile(join(cwd, "next.config.ts"))).toContain("// orycms");
   });
 
-  it("adds @orycms/* to tsconfig.json paths", () => {
+  it("adds @ory-cms/* to tsconfig.json paths", () => {
     runInit({ cwd, packageManager: "npm", answers: makeAnswers() });
     const ts = readJsonFile<{ compilerOptions: { paths: Record<string, string[]> } }>(
       join(cwd, "tsconfig.json"),
     );
-    expect(ts.compilerOptions.paths["@orycms/*"]).toBeDefined();
+    expect(ts.compilerOptions.paths["@ory-cms/*"]).toBeDefined();
   });
 
   it("returns an installCmd when new deps are needed", () => {
     const { installCmd } = runInit({ cwd, packageManager: "npm", answers: makeAnswers() });
     expect(installCmd).toContain("npm install");
-    expect(installCmd).toContain("@orycms/core");
+    expect(installCmd).toContain("@ory-cms/core");
   });
 
   it("uses the detected package manager in installCmd", () => {
@@ -100,7 +100,7 @@ describe("runInit", () => {
   it("returns null installCmd when all deps already present", () => {
     // Pre-populate all deps
     const deps: Record<string, string> = {
-      "@orycms/core": "^1",
+      "@ory-cms/core": "^1",
       pg: "^8",
       "@types/pg": "^8",
       "better-auth": "^1",
@@ -135,11 +135,11 @@ describe("runInit", () => {
     runInit({
       cwd,
       packageManager: "npm",
-      answers: makeAnswers({ plugins: ["@orycms/plugin-seo", "@orycms/plugin-media"] }),
+      answers: makeAnswers({ plugins: ["@ory-cms/plugin-seo", "@ory-cms/plugin-media"] }),
     });
     const cfg = readTextFile(join(cwd, "orycms.config.ts"));
-    expect(cfg).toContain("@orycms/plugin-seo");
-    expect(cfg).toContain("@orycms/plugin-media");
+    expect(cfg).toContain("@ory-cms/plugin-seo");
+    expect(cfg).toContain("@ory-cms/plugin-media");
   });
 
   it("all files generated have valid relative paths (no absolute)", () => {

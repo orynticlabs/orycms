@@ -25,12 +25,12 @@ const AUTH_CHOICES: Array<{ name: string; value: AuthProvider }> = [
 ];
 
 const PLUGIN_CHOICES: Array<{ name: string; value: OfficialPlugin }> = [
-  { name: "SEO — metadata, open-graph, sitemaps", value: "@orycms/plugin-seo" },
-  { name: "Media — image/file management with S3 support", value: "@orycms/plugin-media" },
-  { name: "i18n — internationalisation and localisation", value: "@orycms/plugin-i18n" },
-  { name: "Analytics — page-view and event tracking", value: "@orycms/plugin-analytics" },
-  { name: "Sitemap — automatic XML sitemap generation", value: "@orycms/plugin-sitemap" },
-  { name: "Comments — moderated comment threads", value: "@orycms/plugin-comments" },
+  { name: "SEO — metadata, open-graph, sitemaps", value: "@ory-cms/plugin-seo" },
+  { name: "Media — image/file management with S3 support", value: "@ory-cms/plugin-media" },
+  { name: "i18n — internationalisation and localisation", value: "@ory-cms/plugin-i18n" },
+  { name: "Analytics — page-view and event tracking", value: "@ory-cms/plugin-analytics" },
+  { name: "Sitemap — automatic XML sitemap generation", value: "@ory-cms/plugin-sitemap" },
+  { name: "Comments — moderated comment threads", value: "@ory-cms/plugin-comments" },
 ];
 
 /**

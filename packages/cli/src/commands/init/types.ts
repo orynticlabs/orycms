@@ -13,12 +13,12 @@ export type DatabaseProvider =
 export type AuthProvider = "better-auth" | "auth-js" | "clerk" | "none";
 
 export type OfficialPlugin =
-  | "@orycms/plugin-seo"
-  | "@orycms/plugin-media"
-  | "@orycms/plugin-i18n"
-  | "@orycms/plugin-analytics"
-  | "@orycms/plugin-sitemap"
-  | "@orycms/plugin-comments";
+  | "@ory-cms/plugin-seo"
+  | "@ory-cms/plugin-media"
+  | "@ory-cms/plugin-i18n"
+  | "@ory-cms/plugin-analytics"
+  | "@ory-cms/plugin-sitemap"
+  | "@ory-cms/plugin-comments";
 
 // ── User answers from the interactive prompts ─────────────────────────────────
 
