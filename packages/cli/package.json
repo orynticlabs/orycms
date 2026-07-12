@@ -4,7 +4,7 @@
   "description": "OryCMS command-line interface — initialise, configure, migrate, and seed OryCMS in any Next.js project",
   "type": "module",
   "bin": {
-    "orycms": "./dist/packages/cli/src/index.js"
+    "orycms": "dist/packages/cli/src/index.js"
   },
   "main": "./dist/packages/cli/src/index.js",
   "exports": {
@@ -17,7 +17,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && chmod +x dist/packages/cli/src/index.js",
     "clean": "rm -rf dist",
     "lint": "eslint src/",
     "test": "vitest run",
@@ -37,7 +37,7 @@
   "homepage": "https://github.com/orynticlabs/orycms#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/orynticlabs/orycms.git",
+    "url": "git+https://github.com/orynticlabs/orycms.git",
     "directory": "packages/cli"
   },
   "bugs": {
