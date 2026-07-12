@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "gitbook": {
+      "type": "http",
+      "url": "https://mcp.gitbook.com/api/mcp",
+      "headers": {
+        "Authorization": "gb_api_JkYu3LoDYW6Sq0UWKp4uZ7qbuQW2fKycBA1JcuGD"
+      }
+    }
+  }
+}

@@ -11,7 +11,7 @@ import type {
 
 // ── Dependency lookup tables ──────────────────────────────────────────────────
 
-const ORYCMS_CORE = "@orycms/core";
+const ORYCMS_CORE = "@ory-cms/core";
 
 const DB_PACKAGES: Record<DatabaseProvider, string[]> = {
   postgresql: ["pg", "@types/pg"],

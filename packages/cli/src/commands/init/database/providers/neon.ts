@@ -33,7 +33,7 @@ Neon connection:
     return `
 Neon migrations:
   Run OryCMS core schema installer:
-    import { installOryCMSCoreSchema } from "@orycms/core";
+    import { installOryCMSCoreSchema } from "@ory-cms/core";
     await installOryCMSCoreSchema(adapter);
 
   Or use the Neon CLI for branch-based migrations:

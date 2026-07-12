@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@orycms/cli` will be documented in this file.
+All notable changes to `@ory-cms/cli` will be documented in this file.
 
 ## [0.1.0] - 2026-07-12
 

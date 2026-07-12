@@ -33,7 +33,7 @@ PostgreSQL connection:
     return `
 PostgreSQL migrations:
   Run OryCMS core schema installer:
-    import { installOryCMSCoreSchema } from "@orycms/core";
+    import { installOryCMSCoreSchema } from "@ory-cms/core";
     await installOryCMSCoreSchema(adapter);
 
   Or use a migration tool such as Flyway or golang-migrate:

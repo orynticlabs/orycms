@@ -81,7 +81,7 @@ describe("runCreate — core file generation", () => {
 
   it("includes an installCmd for missing dependencies", async () => {
     const result = await runCreate({ cwd, answers: makeAnswers(), skipDbOps: true });
-    expect(result.installCmd).toContain("@orycms/core");
+    expect(result.installCmd).toContain("@ory-cms/core");
   });
 
   it("uses the selected package manager in the installCmd", async () => {
@@ -100,7 +100,7 @@ describe("runCreate — core file generation", () => {
         dependencies: {
           next: "^14.0.0",
           react: "^18.0.0",
-          "@orycms/core": "^1",
+          "@ory-cms/core": "^1",
           "better-sqlite3": "^9",
           "@types/better-sqlite3": "^9",
         },
@@ -231,7 +231,7 @@ describe("createSummaryLines", () => {
       router: "app" as const,
       files: [],
       dbConnected: false,
-      installCmd: "npm install @orycms/core",
+      installCmd: "npm install @ory-cms/core",
       ...overrides,
     };
   }
@@ -252,8 +252,8 @@ describe("createSummaryLines", () => {
   });
 
   it("includes the installCmd in next steps", () => {
-    const lines = createSummaryLines(makeResult({ installCmd: "npm install @orycms/core" }));
-    expect(lines.join("\n")).toContain("npm install @orycms/core");
+    const lines = createSummaryLines(makeResult({ installCmd: "npm install @ory-cms/core" }));
+    expect(lines.join("\n")).toContain("npm install @ory-cms/core");
   });
 
   it("uses custom port", () => {

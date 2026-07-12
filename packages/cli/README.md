@@ -1,4 +1,4 @@
-# @orycms/cli
+# @ory-cms/cli
 
 Official command-line interface for [OryCMS](https://github.com/orynticlabs/orycms) — the headless CMS built for Next.js.
 
@@ -18,13 +18,13 @@ Official command-line interface for [OryCMS](https://github.com/orynticlabs/oryc
 ## Installation
 
 ```bash
-npm install -g @orycms/cli
+npm install -g @ory-cms/cli
 ```
 
 Or run directly without installing:
 
 ```bash
-npx @orycms/cli init
+npx @ory-cms/cli init
 ```
 
 ## Quick Start
@@ -86,7 +86,7 @@ orycms init
 orycms init --cwd ./my-nextjs-app
 
 # Install a plugin
-orycms plugin install @orycms/plugin-seo
+orycms plugin install @ory-cms/plugin-seo
 
 # View current config
 orycms config show
@@ -97,4 +97,4 @@ orycms config show
 - **GitHub**: https://github.com/orynticlabs/orycms
 - **Documentation**: https://github.com/orynticlabs/orycms#readme
 - **Issues**: https://github.com/orynticlabs/orycms/issues
-- **npm**: https://www.npmjs.com/package/@orycms/cli
+- **npm**: https://www.npmjs.com/package/@ory-cms/cli

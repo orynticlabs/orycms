@@ -38,7 +38,7 @@ export function runInit(opts: InitRunOptions): InitSummary {
   // 2. next.config.ts / next.config.js — update or create
   files.push(generateNextConfig(ctx));
 
-  // 3. tsconfig.json — add @orycms/* paths
+  // 3. tsconfig.json — add @ory-cms/* paths
   files.push(generateTsConfig(ctx));
 
   // 4. .env.example — merge env vars
