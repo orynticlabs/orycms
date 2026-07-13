@@ -9,10 +9,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true,
-    "noEmit": true,
-    "paths": {
-      "@/*": ["../../src/*"]
-    }
+    "noEmit": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

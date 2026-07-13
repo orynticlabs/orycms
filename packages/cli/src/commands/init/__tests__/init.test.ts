@@ -78,18 +78,17 @@ describe("runInit", () => {
     expect(readTextFile(join(cwd, "next.config.ts"))).toContain("// orycms");
   });
 
-  it("adds @ory-cms/* to tsconfig.json paths", () => {
-    runInit({ cwd, packageManager: "npm", answers: makeAnswers() });
-    const ts = readJsonFile<{ compilerOptions: { paths: Record<string, string[]> } }>(
-      join(cwd, "tsconfig.json"),
-    );
-    expect(ts.compilerOptions.paths["@ory-cms/*"]).toBeDefined();
+  it("skips tsconfig — no path aliases needed when packages install from npm", () => {
+    const { files } = runInit({ cwd, packageManager: "npm", answers: makeAnswers() });
+    const tsResult = files.find((f) => f.path === "tsconfig.json");
+    expect(tsResult?.status).toBe("skipped");
   });
 
-  it("returns an installCmd when new deps are needed", () => {
+  it("returns an installCmd containing both core and next", () => {
     const { installCmd } = runInit({ cwd, packageManager: "npm", answers: makeAnswers() });
     expect(installCmd).toContain("npm install");
     expect(installCmd).toContain("@ory-cms/core");
+    expect(installCmd).toContain("@ory-cms/next");
   });
 
   it("uses the detected package manager in installCmd", () => {
@@ -101,6 +100,7 @@ describe("runInit", () => {
     // Pre-populate all deps
     const deps: Record<string, string> = {
       "@ory-cms/core": "^1",
+      "@ory-cms/next": "^1",
       pg: "^8",
       "@types/pg": "^8",
       "better-auth": "^1",
