@@ -2,6 +2,9 @@
   "name": "orycms",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "description": "OryCMS — open-source headless CMS built on Next.js",
   "author": "OrynticLabs <support@orynticlabs.com>",
   "license": "MIT",
@@ -101,5 +104,8 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vitest": "^4.1.10"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true
   }
 }
