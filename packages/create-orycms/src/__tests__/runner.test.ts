@@ -101,6 +101,7 @@ describe("runCreate — core file generation", () => {
           next: "^14.0.0",
           react: "^18.0.0",
           "@ory-cms/core": "^1",
+          "@ory-cms/next": "^1",
           "better-sqlite3": "^9",
           "@types/better-sqlite3": "^9",
         },
