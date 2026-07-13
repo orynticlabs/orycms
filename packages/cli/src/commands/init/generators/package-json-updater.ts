@@ -12,6 +12,7 @@ import type {
 // ── Dependency lookup tables ──────────────────────────────────────────────────
 
 const ORYCMS_CORE = "@ory-cms/core";
+const ORYCMS_NEXT = "@ory-cms/next";
 
 const DB_PACKAGES: Record<DatabaseProvider, string[]> = {
   postgresql: ["pg", "@types/pg"],
@@ -45,7 +46,7 @@ export function resolveDependencies(
   auth: AuthProvider,
   plugins: OfficialPlugin[],
 ): string[] {
-  return [ORYCMS_CORE, ...(DB_PACKAGES[db] ?? []), ...(AUTH_PACKAGES[auth] ?? []), ...plugins];
+  return [ORYCMS_CORE, ORYCMS_NEXT, ...(DB_PACKAGES[db] ?? []), ...(AUTH_PACKAGES[auth] ?? []), ...plugins];
 }
 
 // ── Idempotent runner ─────────────────────────────────────────────────────────

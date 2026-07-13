@@ -34,7 +34,7 @@ export function buildOryCMSConfig(ctx: InitContext): string {
   const pluginsBlock =
     answers.plugins.length > 0 ? `[\n${answers.plugins.map(pluginEntry).join(",\n")},\n  ]` : "[]";
 
-  return `import { defineOryCMSConfig } from "./src/config/config.validator.ts";
+  return `import { defineOryCMSConfig } from "@ory-cms/core";
 
 export default defineOryCMSConfig({
   database: {

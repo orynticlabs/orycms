@@ -248,42 +248,23 @@ describe("generateTsConfig", () => {
     expect(generateTsConfig(makeCtx()).status).toBe("skipped");
   });
 
-  it("adds @ory-cms/* paths to tsconfig", () => {
+  it("always skips — @ory-cms packages install from npm, no path aliases needed", () => {
     writeFileSync(
       join(cwd, "tsconfig.json"),
       JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
     );
     const result = generateTsConfig(makeCtx());
-    expect(result.status).toBe("updated");
-    const ts = readJsonFile<{ compilerOptions: { paths: Record<string, string[]> } }>(
-      join(cwd, "tsconfig.json"),
-    );
-    expect(ts.compilerOptions.paths["@ory-cms/*"]).toBeDefined();
-  });
-
-  it("skips when @ory-cms/* already present", () => {
-    writeFileSync(
-      join(cwd, "tsconfig.json"),
-      JSON.stringify({ compilerOptions: { paths: { "@ory-cms/*": ["./src/*"] } } }),
-    );
-    expect(generateTsConfig(makeCtx()).status).toBe("skipped");
-  });
-
-  it("is idempotent", () => {
-    writeFileSync(join(cwd, "tsconfig.json"), JSON.stringify({ compilerOptions: {} }));
-    generateTsConfig(makeCtx());
-    const first = readTextFile(join(cwd, "tsconfig.json"));
-    generateTsConfig(makeCtx());
-    const second = readTextFile(join(cwd, "tsconfig.json"));
-    expect(first).toBe(second);
+    expect(result.status).toBe("skipped");
   });
 });
 
 // ── package-json-updater ──────────────────────────────────────────────────────
 
 describe("resolveDependencies", () => {
-  it("always includes @ory-cms/core", () => {
-    expect(resolveDependencies("postgresql", "none", [])).toContain("@ory-cms/core");
+  it("always includes @ory-cms/core and @ory-cms/next", () => {
+    const deps = resolveDependencies("postgresql", "none", []);
+    expect(deps).toContain("@ory-cms/core");
+    expect(deps).toContain("@ory-cms/next");
   });
 
   it("includes DB packages for postgresql", () => {
@@ -320,15 +301,17 @@ describe("generatePackageJson", () => {
     expect(result.status).toBe("updated");
     expect(result.toInstall.length).toBeGreaterThan(0);
     expect(result.toInstall).toContain("@ory-cms/core");
+    expect(result.toInstall).toContain("@ory-cms/next");
   });
 
   it("skips deps already present", () => {
     const existing = {
-      dependencies: { "@ory-cms/core": "^1.0.0", pg: "^8", "@types/pg": "^8", "better-auth": "^1" },
+      dependencies: { "@ory-cms/core": "^1.0.0", "@ory-cms/next": "^1.0.0", pg: "^8", "@types/pg": "^8", "better-auth": "^1" },
     };
     writeFileSync(join(cwd, "package.json"), JSON.stringify(existing));
     const result = generatePackageJson(makeCtx());
     expect(result.toInstall).not.toContain("@ory-cms/core");
+    expect(result.toInstall).not.toContain("@ory-cms/next");
   });
 
   it("is idempotent — second run adds nothing new", () => {
