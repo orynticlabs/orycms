@@ -1,4 +1,4 @@
-# create-orycms
+# create-ory-cms
 
 Scaffold [OryCMS](https://github.com/orynticlabs/orycms) into a new or existing Next.js project — supports both App Router and Pages Router.
 
@@ -19,7 +19,7 @@ Scaffold [OryCMS](https://github.com/orynticlabs/orycms) into a new or existing 
 ## Quick Start
 
 ```bash
-npx create-orycms
+npx create-ory-cms
 ```
 
 Or with other package managers:
@@ -27,7 +27,7 @@ Or with other package managers:
 ```bash
 pnpm create orycms
 yarn create orycms
-bunx create-orycms
+bunx create-ory-cms
 ```
 
 Run inside an existing Next.js project directory, or pass `--cwd` to target a specific path.
@@ -43,18 +43,18 @@ Run inside an existing Next.js project directory, or pass `--cwd` to target a sp
 
 ```bash
 # Run interactively in the current directory
-npx create-orycms
+npx create-ory-cms
 
 # Target a specific directory
-npx create-orycms --cwd ./my-app
+npx create-ory-cms --cwd ./my-app
 
 # Skip database setup (useful in CI)
-npx create-orycms --skip-db
+npx create-ory-cms --skip-db
 ```
 
 ## What Gets Created
 
-After running `create-orycms`, the following files are created or updated in your project:
+After running `create-ory-cms`, the following files are created or updated in your project:
 
 | File | Status |
 |------|--------|
@@ -69,4 +69,4 @@ After running `create-orycms`, the following files are created or updated in you
 - **GitHub**: https://github.com/orynticlabs/orycms
 - **Documentation**: https://github.com/orynticlabs/orycms#readme
 - **Issues**: https://github.com/orynticlabs/orycms/issues
-- **npm**: https://www.npmjs.com/package/create-orycms
+- **npm**: https://www.npmjs.com/package/create-ory-cms

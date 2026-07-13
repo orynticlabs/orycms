@@ -1,10 +1,10 @@
 {
-  "name": "create-orycms",
-  "version": "0.1.1",
+  "name": "create-ory-cms",
+  "version": "0.1.0",
   "description": "Scaffold OryCMS into a new or existing Next.js project — supports App Router and Pages Router",
   "type": "module",
   "bin": {
-    "create-orycms": "dist/create-orycms/src/index.js"
+    "create-ory-cms": "dist/create-orycms/src/index.js"
   },
   "main": "./dist/create-orycms/src/index.js",
   "exports": {
@@ -25,7 +25,7 @@
     "prepublishOnly": "npm run clean && npm run build && npm run typecheck && npm run test"
   },
   "keywords": [
-    "create-orycms",
+    "create-ory-cms",
     "orycms",
     "cms",
     "nextjs",

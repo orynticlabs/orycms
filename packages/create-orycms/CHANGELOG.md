@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `create-orycms` will be documented in this file.
+All notable changes to `create-ory-cms` will be documented in this file.
 
 ## [0.1.0] - 2026-07-12
 
