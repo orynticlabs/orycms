@@ -9,12 +9,12 @@ import type { CreateAskFn } from "./runner";
 // ── CLI registration ───────────────────────────────────────────────────────────
 
 /**
- * Register the create-orycms command on a Commander program.
+ * Register the create-ory-cms command on a Commander program.
  * Accepts an optional `askFn` for test injection (bypasses @inquirer/prompts).
  */
 export function registerCreateCommand(program: Command, askFn?: CreateAskFn): void {
   program
-    .name("create-orycms")
+    .name("create-ory-cms")
     .description("Add OryCMS to a Next.js project")
     .option("--cwd <path>", "Target directory (defaults to process.cwd())")
     .option("--skip-db", "Skip database connection test and DB operations")

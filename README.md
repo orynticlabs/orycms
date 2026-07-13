@@ -187,7 +187,7 @@ OryCMS is distributed as a set of focused npm packages under the `@ory-cms` scop
 | `@ory-cms/react` | Coming soon | Headless React hooks for frontend consumption |
 | `@ory-cms/cli` | **Published** | CLI — init, migrate, seed, plugin commands |
 | `@ory-cms/plugin-sdk` | Coming soon | Types and helpers for building plugins |
-| `create-orycms` | Coming soon | Project scaffolder — `npx create-orycms` |
+| `create-ory-cms` | Coming soon | Project scaffolder — `npx create-ory-cms` |
 
 > **Note:** `@ory-cms/cli` is published and functional, but it generates projects that depend on `@ory-cms/core` and `@ory-cms/next`. Until those packages are published, **use the git-clone installation below**.
 
@@ -224,7 +224,7 @@ Application available at `http://localhost:3000`.
 **New project:**
 
 ```bash
-npx create-orycms my-app
+npx create-ory-cms my-app
 cd my-app
 ```
 

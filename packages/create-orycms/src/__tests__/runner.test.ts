@@ -1,5 +1,5 @@
 /**
- * Tests for the create-orycms runner and CLI registration.
+ * Tests for the create-ory-cms runner and CLI registration.
  *
  * All tests use real temp directories (same pattern as packages/cli tests).
  * Database operations are skipped via skipDbOps:true so no DB drivers are needed.
@@ -301,7 +301,7 @@ describe("registerCreateCommand", () => {
     const program = new Command();
     registerCreateCommand(program);
     // The program itself IS the command when using .name() and .action()
-    expect(program.name()).toBe("create-orycms");
+    expect(program.name()).toBe("create-ory-cms");
   });
 
   it("accepts a custom askFn and runs without TTY", async () => {
@@ -310,7 +310,7 @@ describe("registerCreateCommand", () => {
     program.exitOverride();
 
     registerCreateCommand(program, askFn);
-    await program.parseAsync(["node", "create-orycms", "--cwd", cwd, "--skip-db"]);
+    await program.parseAsync(["node", "create-ory-cms", "--cwd", cwd, "--skip-db"]);
 
     expect(askFn).toHaveBeenCalledOnce();
     expect(askFn).toHaveBeenCalledWith(cwd);
@@ -327,7 +327,7 @@ describe("registerCreateCommand", () => {
     const program = new Command();
     program.exitOverride();
     registerCreateCommand(program, askFn);
-    await program.parseAsync(["node", "create-orycms", "--cwd", cwd, "--skip-db"]);
+    await program.parseAsync(["node", "create-ory-cms", "--cwd", cwd, "--skip-db"]);
 
     vi.restoreAllMocks();
 
@@ -346,7 +346,7 @@ describe("registerCreateCommand", () => {
     const program = new Command();
     program.exitOverride();
     registerCreateCommand(program, askFn);
-    await program.parseAsync(["node", "create-orycms", "--cwd", cwd, "--skip-db"]);
+    await program.parseAsync(["node", "create-ory-cms", "--cwd", cwd, "--skip-db"]);
 
     vi.restoreAllMocks();
 
