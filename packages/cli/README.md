@@ -14,6 +14,7 @@ Official command-line interface for [OryCMS](https://github.com/orynticlabs/oryc
 
 - Node.js >= 18
 - A Next.js project using the App Router
+- **`@ory-cms/core`** installed in your project (see below)
 
 ## Installation
 
@@ -27,18 +28,29 @@ Or run directly without installing:
 npx @ory-cms/cli init
 ```
 
+> **Important:** `@ory-cms/cli` is the scaffolding and management tool. It does not include the OryCMS runtime. Your project also needs `@ory-cms/core` and `@ory-cms/next` to function. Install them before or immediately after running `orycms init`:
+>
+> ```bash
+> npm install @ory-cms/core @ory-cms/next
+> ```
+
 ## Quick Start
 
 Inside an existing Next.js project:
 
 ```bash
-orycms init
+# 1. Install the runtime packages first
+npm install @ory-cms/core @ory-cms/next
+
+# 2. Run the CLI wizard
+npx @ory-cms/cli init
 ```
 
 The wizard will:
 1. Detect your Next.js version and App Router
 2. Prompt for database provider and connection string
 3. Generate `orycms.config.ts`, admin route, `.env.example`, and update `tsconfig.json`
+4. Print the exact `npm install` command for any additional dependencies (db drivers, auth, plugins)
 
 ## Commands
 

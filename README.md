@@ -176,6 +176,23 @@ orycms/
 
 ---
 
+# npm Packages
+
+OryCMS is distributed as a set of focused npm packages under the `@ory-cms` scope.
+
+| Package | Status | Purpose |
+|---|---|---|
+| `@ory-cms/core` | Coming soon | Schema engine, RBAC, hooks, auth, database adapters |
+| `@ory-cms/next` | Coming soon | Next.js 15 integration — admin panel, API routes, middleware |
+| `@ory-cms/react` | Coming soon | Headless React hooks for frontend consumption |
+| `@ory-cms/cli` | **Published** | CLI — init, migrate, seed, plugin commands |
+| `@ory-cms/plugin-sdk` | Coming soon | Types and helpers for building plugins |
+| `create-orycms` | Coming soon | Project scaffolder — `npx create-orycms` |
+
+> **Note:** `@ory-cms/cli` is published and functional, but it generates projects that depend on `@ory-cms/core` and `@ory-cms/next`. Until those packages are published, **use the git-clone installation below**.
+
+---
+
 # Getting Started
 
 ## Prerequisites
@@ -188,51 +205,72 @@ orycms/
 
 ## Installation
 
-Clone the repository:
+### Option A — Git clone (recommended until all packages are published)
 
 ```bash
 git clone https://github.com/orynticlabs/orycms.git
 cd orycms
-```
-
-Install dependencies:
-
-```bash
 npm install
-```
-
-Create environment variables:
-
-```bash
 cp .env.example .env
-```
-
-Start development server:
-
-```bash
 npm run dev
 ```
 
-Application will be available at:
-
-```text
-http://localhost:3000
-```
+Application available at `http://localhost:3000`.
 
 ---
 
-# Environment Variables
+### Option B — npm (once all packages are published)
+
+**New project:**
+
+```bash
+npx create-orycms my-app
+cd my-app
+```
+
+**Add to an existing Next.js project:**
+
+```bash
+# 1. Install the runtime packages
+npm install @ory-cms/core @ory-cms/next
+
+# 2. Run the interactive init wizard
+npx @ory-cms/cli init
+
+# 3. Apply database migrations
+npx @ory-cms/cli db:migrate
+```
+
+**Optional packages:**
+
+```bash
+# React hooks for your frontend
+npm install @ory-cms/react
+
+# Plugin development
+npm install --save-dev @ory-cms/plugin-sdk
+```
+
+> Installing `@ory-cms/cli` alone is not enough. The CLI scaffolds your project and tells you to install `@ory-cms/core`, which is the actual CMS engine. You need **both** the CLI and the core package for a working setup.
+
+---
+
+## Environment Variables
 
 ```env
-DATABASE_URL=
+# Database (required)
+DATABASE_URL=postgresql://user:password@localhost:5432/orycms
 
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=
+# Auth (required)
+NEXTAUTH_SECRET=your-random-secret
+NEXTAUTH_URL=http://localhost:3000
 
+# Storage (optional)
 S3_ACCESS_KEY=
 S3_SECRET_KEY=
 S3_BUCKET=
 
+# Email (optional)
 EMAIL_HOST=
 EMAIL_PORT=
 EMAIL_USER=
@@ -241,7 +279,7 @@ EMAIL_PASSWORD=
 
 ---
 
-# Database Setup
+## Database Setup
 
 Run migrations:
 
