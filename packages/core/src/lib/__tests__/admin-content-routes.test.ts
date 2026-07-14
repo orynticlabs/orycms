@@ -46,9 +46,13 @@ describe("admin content routes", () => {
       path.join(nextRoot, "components/dashboard/AppSidebar.tsx"),
     ];
 
+<<<<<<< HEAD
+    const source = files.map((file) => readFileSync(file, "utf8")).join("\n");
+=======
     const source = files
       .map((file) => readFileSync(file, "utf8"))
       .join("\n");
+>>>>>>> origin/main
 
     expect(source).toContain("adminContentListPath");
     expect(source).toContain("adminContentCreatePath");
