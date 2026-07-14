@@ -244,6 +244,13 @@ describe("generateNextConfig", () => {
 // ── tsconfig-updater ──────────────────────────────────────────────────────────
 
 describe("generateTsConfig", () => {
+<<<<<<< HEAD
+=======
+  it("skips when tsconfig.json is absent", () => {
+    expect(generateTsConfig(makeCtx()).status).toBe("skipped");
+  });
+
+>>>>>>> origin/main
   it("always skips — @ory-cms packages install from npm, no path aliases needed", () => {
     writeFileSync(
       join(cwd, "tsconfig.json"),
@@ -251,6 +258,7 @@ describe("generateTsConfig", () => {
     );
     const result = generateTsConfig(makeCtx());
     expect(result.status).toBe("skipped");
+<<<<<<< HEAD
   });
 
   it("does not add @ory-cms/* to tsconfig paths", () => {
@@ -270,6 +278,8 @@ describe("generateTsConfig", () => {
     writeFileSync(join(cwd, "tsconfig.json"), original);
     generateTsConfig(makeCtx());
     expect(readTextFile(join(cwd, "tsconfig.json"))).toBe(original);
+=======
+>>>>>>> origin/main
   });
 });
 
@@ -316,15 +326,17 @@ describe("generatePackageJson", () => {
     expect(result.status).toBe("updated");
     expect(result.toInstall.length).toBeGreaterThan(0);
     expect(result.toInstall).toContain("@ory-cms/core");
+    expect(result.toInstall).toContain("@ory-cms/next");
   });
 
   it("skips deps already present", () => {
     const existing = {
-      dependencies: { "@ory-cms/core": "^1.0.0", pg: "^8", "@types/pg": "^8", "better-auth": "^1" },
+      dependencies: { "@ory-cms/core": "^1.0.0", "@ory-cms/next": "^1.0.0", pg: "^8", "@types/pg": "^8", "better-auth": "^1" },
     };
     writeFileSync(join(cwd, "package.json"), JSON.stringify(existing));
     const result = generatePackageJson(makeCtx());
     expect(result.toInstall).not.toContain("@ory-cms/core");
+    expect(result.toInstall).not.toContain("@ory-cms/next");
   });
 
   it("is idempotent — second run adds nothing new", () => {

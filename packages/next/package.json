@@ -1,7 +1,11 @@
 {
   "name": "@ory-cms/next",
   "version": "0.1.0",
+<<<<<<< HEAD
   "description": "OryCMS Next.js integration — admin dashboard UI, content components, and shadcn/ui primitives",
+=======
+  "description": "OryCMS Next.js integration \u2014 admin dashboard UI, content components, and shadcn/ui primitives",
+>>>>>>> origin/main
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -27,7 +31,10 @@
     "build": "tsup",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
+<<<<<<< HEAD
     "test": "vitest run",
+=======
+>>>>>>> origin/main
     "prepublishOnly": "npm run clean && npm run build && npm run typecheck"
   },
   "keywords": [
@@ -114,7 +121,11 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "tsup": "^8.5.0",
+<<<<<<< HEAD
     "typescript": "^5.8.3",
     "vitest": "^4.1.10"
+=======
+    "typescript": "^5.8.3"
+>>>>>>> origin/main
   }
 }
