@@ -2,6 +2,9 @@
   "name": "orycms",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "description": "OryCMS — open-source headless CMS built on Next.js",
   "author": "OrynticLabs <support@orynticlabs.com>",
   "license": "MIT",

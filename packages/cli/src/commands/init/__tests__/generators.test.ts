@@ -244,46 +244,42 @@ describe("generateNextConfig", () => {
 // ── tsconfig-updater ──────────────────────────────────────────────────────────
 
 describe("generateTsConfig", () => {
-  it("skips when tsconfig.json is absent", () => {
-    expect(generateTsConfig(makeCtx()).status).toBe("skipped");
-  });
-
-  it("adds @ory-cms/* paths to tsconfig", () => {
+  it("always skips — @ory-cms packages install from npm, no path aliases needed", () => {
     writeFileSync(
       join(cwd, "tsconfig.json"),
       JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
     );
     const result = generateTsConfig(makeCtx());
-    expect(result.status).toBe("updated");
+    expect(result.status).toBe("skipped");
+  });
+
+  it("does not add @ory-cms/* to tsconfig paths", () => {
+    writeFileSync(
+      join(cwd, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
+    );
+    generateTsConfig(makeCtx());
     const ts = readJsonFile<{ compilerOptions: { paths: Record<string, string[]> } }>(
       join(cwd, "tsconfig.json"),
     );
-    expect(ts.compilerOptions.paths["@ory-cms/*"]).toBeDefined();
+    expect(ts.compilerOptions.paths["@ory-cms/*"]).toBeUndefined();
   });
 
-  it("skips when @ory-cms/* already present", () => {
-    writeFileSync(
-      join(cwd, "tsconfig.json"),
-      JSON.stringify({ compilerOptions: { paths: { "@ory-cms/*": ["./src/*"] } } }),
-    );
-    expect(generateTsConfig(makeCtx()).status).toBe("skipped");
-  });
-
-  it("is idempotent", () => {
-    writeFileSync(join(cwd, "tsconfig.json"), JSON.stringify({ compilerOptions: {} }));
+  it("does not modify the tsconfig file", () => {
+    const original = JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } });
+    writeFileSync(join(cwd, "tsconfig.json"), original);
     generateTsConfig(makeCtx());
-    const first = readTextFile(join(cwd, "tsconfig.json"));
-    generateTsConfig(makeCtx());
-    const second = readTextFile(join(cwd, "tsconfig.json"));
-    expect(first).toBe(second);
+    expect(readTextFile(join(cwd, "tsconfig.json"))).toBe(original);
   });
 });
 
 // ── package-json-updater ──────────────────────────────────────────────────────
 
 describe("resolveDependencies", () => {
-  it("always includes @ory-cms/core", () => {
-    expect(resolveDependencies("postgresql", "none", [])).toContain("@ory-cms/core");
+  it("always includes @ory-cms/core and @ory-cms/next", () => {
+    const deps = resolveDependencies("postgresql", "none", []);
+    expect(deps).toContain("@ory-cms/core");
+    expect(deps).toContain("@ory-cms/next");
   });
 
   it("includes DB packages for postgresql", () => {

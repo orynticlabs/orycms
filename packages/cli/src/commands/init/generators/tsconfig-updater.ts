@@ -1,50 +1,14 @@
-import { join } from "node:path";
-
-import { fileExists, readJsonFile, writeJsonFile } from "../../../shared/fs";
 import type { GeneratorResult, InitContext } from "../types";
 
-type TsConfig = {
-  compilerOptions?: {
-    paths?: Record<string, string[]>;
-    [key: string]: unknown;
+/**
+ * Previously added @ory-cms/* path aliases to the host tsconfig.
+ * No longer needed — users install @ory-cms/core and @ory-cms/next from npm,
+ * which TypeScript resolves from node_modules without any path aliases.
+ */
+export function generateTsConfig(_ctx: InitContext): GeneratorResult {
+  return {
+    path: "tsconfig.json",
+    status: "skipped",
+    description: "no path aliases needed — @ory-cms packages install from npm",
   };
-  [key: string]: unknown;
-};
-
-/** OryCMS path aliases added to tsconfig.json. */
-const ORYCMS_PATHS: Record<string, string[]> = {
-  "@ory-cms/*": ["./src/*"],
-};
-
-const ORYCMS_SENTINEL_KEY = "@ory-cms/*";
-
-// ── Idempotent runner ─────────────────────────────────────────────────────────
-
-export function generateTsConfig(ctx: InitContext): GeneratorResult {
-  const path = "tsconfig.json";
-  const full = join(ctx.cwd, path);
-
-  if (!fileExists(full)) {
-    // Nothing to patch — not an error, just note it
-    return { path, status: "skipped", description: "tsconfig.json not found, skipped" };
-  }
-
-  let tsconfig: TsConfig;
-  try {
-    tsconfig = readJsonFile<TsConfig>(full);
-  } catch {
-    return { path, status: "skipped", description: "tsconfig.json could not be parsed" };
-  }
-
-  const paths = tsconfig.compilerOptions?.paths ?? {};
-
-  if (paths[ORYCMS_SENTINEL_KEY]) {
-    return { path, status: "skipped", description: "tsconfig.json already has OryCMS paths" };
-  }
-
-  tsconfig.compilerOptions ??= {};
-  tsconfig.compilerOptions.paths = { ...paths, ...ORYCMS_PATHS };
-
-  writeJsonFile(full, tsconfig);
-  return { path, status: "updated" };
 }
