@@ -244,10 +244,13 @@ describe("generateNextConfig", () => {
 // ── tsconfig-updater ──────────────────────────────────────────────────────────
 
 describe("generateTsConfig", () => {
+<<<<<<< HEAD
+=======
   it("skips when tsconfig.json is absent", () => {
     expect(generateTsConfig(makeCtx()).status).toBe("skipped");
   });
 
+>>>>>>> origin/main
   it("always skips — @ory-cms packages install from npm, no path aliases needed", () => {
     writeFileSync(
       join(cwd, "tsconfig.json"),
@@ -255,6 +258,28 @@ describe("generateTsConfig", () => {
     );
     const result = generateTsConfig(makeCtx());
     expect(result.status).toBe("skipped");
+<<<<<<< HEAD
+  });
+
+  it("does not add @ory-cms/* to tsconfig paths", () => {
+    writeFileSync(
+      join(cwd, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
+    );
+    generateTsConfig(makeCtx());
+    const ts = readJsonFile<{ compilerOptions: { paths: Record<string, string[]> } }>(
+      join(cwd, "tsconfig.json"),
+    );
+    expect(ts.compilerOptions.paths["@ory-cms/*"]).toBeUndefined();
+  });
+
+  it("does not modify the tsconfig file", () => {
+    const original = JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } });
+    writeFileSync(join(cwd, "tsconfig.json"), original);
+    generateTsConfig(makeCtx());
+    expect(readTextFile(join(cwd, "tsconfig.json"))).toBe(original);
+=======
+>>>>>>> origin/main
   });
 });
 

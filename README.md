@@ -182,14 +182,14 @@ OryCMS is distributed as a set of focused npm packages under the `@ory-cms` scop
 
 | Package | Status | Purpose |
 |---|---|---|
-| `@ory-cms/core` | Coming soon | Schema engine, RBAC, hooks, auth, database adapters |
-| `@ory-cms/next` | Coming soon | Next.js 15 integration — admin panel, API routes, middleware |
+| `@ory-cms/core` | Ready to publish | Schema engine, RBAC, hooks, auth, database adapters |
+| `@ory-cms/next` | Ready to publish | Next.js 15 integration — admin dashboard UI + shadcn/ui components |
 | `@ory-cms/react` | Coming soon | Headless React hooks for frontend consumption |
 | `@ory-cms/cli` | **Published** | CLI — init, migrate, seed, plugin commands |
 | `@ory-cms/plugin-sdk` | Coming soon | Types and helpers for building plugins |
-| `create-ory-cms` | Coming soon | Project scaffolder — `npx create-ory-cms` |
+| `create-ory-cms` | **Published** | Project scaffolder — `npx create-ory-cms` |
 
-> **Note:** `@ory-cms/cli` is published and functional, but it generates projects that depend on `@ory-cms/core` and `@ory-cms/next`. Until those packages are published, **use the git-clone installation below**.
+> **Note:** `@ory-cms/core` and `@ory-cms/next` are built, tested, and packaged — ready for `npm publish`. Until they are live on npm, **use the git-clone installation below**. Once published, `npx create-ory-cms` and `@ory-cms/cli init` will install them automatically.
 
 ---
 
