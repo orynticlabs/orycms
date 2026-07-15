@@ -1,6 +1,6 @@
 {
   "name": "@ory-cms/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OryCMS command-line interface — initialise, configure, migrate, and seed OryCMS in any Next.js project",
   "type": "module",
   "bin": {
