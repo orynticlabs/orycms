@@ -1,6 +1,6 @@
 {
   "name": "@ory-cms/next",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OryCMS Next.js integration — admin dashboard UI, content components, and shadcn/ui primitives",
   "type": "module",
   "main": "./dist/index.js",
