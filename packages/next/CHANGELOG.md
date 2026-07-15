@@ -2,11 +2,7 @@
 
 All notable changes to `@ory-cms/next` will be documented in this file.
 
-<<<<<<< HEAD
-## [0.1.0] — 2026-07-14
-=======
-## [0.1.0] — 2026-07-13
->>>>>>> origin/main
+## [0.1.0] — 2026-07-15
 
 ### Added
 

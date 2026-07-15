@@ -1,11 +1,7 @@
 {
   "name": "@ory-cms/core",
   "version": "0.1.0",
-<<<<<<< HEAD
   "description": "OryCMS core runtime — auth, schema, content, plugins, hooks, and database adapters",
-=======
-  "description": "OryCMS core runtime \u2014 auth, schema, content, plugins, hooks, and database adapters",
->>>>>>> origin/main
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -28,13 +24,8 @@
     "build": "tsup",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-<<<<<<< HEAD
     "test": "vitest run",
     "prepublishOnly": "npm run clean && npm run build && npm run typecheck"
-=======
-    "prepublishOnly": "npm run clean && npm run build && npm run typecheck",
-    "test": "vitest run"
->>>>>>> origin/main
   },
   "keywords": [
     "orycms",
