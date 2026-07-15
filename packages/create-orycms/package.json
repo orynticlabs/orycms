@@ -1,14 +1,14 @@
 {
   "name": "create-ory-cms",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Scaffold OryCMS into a new or existing Next.js project — supports App Router and Pages Router",
   "type": "module",
   "bin": {
-    "create-ory-cms": "dist/create-orycms/src/index.js"
+    "create-ory-cms": "dist/index.js"
   },
-  "main": "./dist/create-orycms/src/index.js",
+  "main": "./dist/index.js",
   "exports": {
-    ".": "./dist/create-orycms/src/index.js"
+    ".": "./dist/index.js"
   },
   "files": [
     "dist",
@@ -17,7 +17,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && chmod +x dist/create-orycms/src/index.js",
+    "build": "tsup",
     "clean": "rm -rf dist",
     "lint": "eslint src/",
     "test": "vitest run",
@@ -34,7 +34,7 @@
     "headless-cms",
     "content-management"
   ],
-  "author": "OrynticLabs <support@orynticlabs.com>",
+  "author": "OrynticLabs Private Limited <support@orynticlabs.com>",
   "license": "MIT",
   "homepage": "https://github.com/orynticlabs/orycms#readme",
   "repository": {
@@ -55,5 +55,10 @@
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",
     "commander": "^15.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.10"
   }
 }

@@ -1,14 +1,14 @@
 {
   "name": "@ory-cms/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "OryCMS command-line interface — initialise, configure, migrate, and seed OryCMS in any Next.js project",
   "type": "module",
   "bin": {
-    "orycms": "dist/packages/cli/src/index.js"
+    "orycms": "dist/index.js"
   },
-  "main": "./dist/packages/cli/src/index.js",
+  "main": "./dist/index.js",
   "exports": {
-    ".": "./dist/packages/cli/src/index.js"
+    ".": "./dist/index.js"
   },
   "files": [
     "dist",
@@ -17,7 +17,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && chmod +x dist/packages/cli/src/index.js",
+    "build": "tsup",
     "clean": "rm -rf dist",
     "lint": "eslint src/",
     "test": "vitest run",
@@ -32,7 +32,7 @@
     "headless-cms",
     "content-management"
   ],
-  "author": "OrynticLabs <support@orynticlabs.com>",
+  "author": "OrynticLabs Private Limited <support@orynticlabs.com>",
   "license": "MIT",
   "homepage": "https://github.com/orynticlabs/orycms#readme",
   "repository": {
@@ -53,5 +53,10 @@
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",
     "commander": "^15.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.10"
   }
 }
