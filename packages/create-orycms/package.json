@@ -1,6 +1,6 @@
 {
   "name": "create-ory-cms",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Scaffold OryCMS into a new or existing Next.js project — supports App Router and Pages Router",
   "type": "module",
   "bin": {

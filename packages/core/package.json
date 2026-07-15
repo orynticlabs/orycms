@@ -1,6 +1,6 @@
 {
   "name": "@ory-cms/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OryCMS core runtime — auth, schema, content, plugins, hooks, and database adapters",
   "type": "module",
   "main": "./dist/index.js",
