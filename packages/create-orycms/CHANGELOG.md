@@ -2,6 +2,17 @@
 
 All notable changes to `create-ory-cms` will be documented in this file.
 
+## [0.1.2] - 2026-07-16
+
+### Fixed
+
+- **Critical:** `npx create-ory-cms` crashed with `ERR_MODULE_NOT_FOUND`. The published binary was built with `tsc`, which leaves relative imports extensionless — Node's ESM loader rejects those. Switched the build to `tsup`, which bundles into a single self-contained `dist/index.js`.
+- Corrected `bin`, `main`, and `exports` to point at the new flat `dist/index.js`.
+
+### Added
+
+- Binary smoke test that loads the compiled `dist/index.js` through Node's ESM loader.
+
 ## [0.1.0] - 2026-07-12
 
 ### Added
