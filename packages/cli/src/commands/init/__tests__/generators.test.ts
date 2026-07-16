@@ -96,18 +96,38 @@ describe("generateOryCMSConfig", () => {
 // ── admin-route ───────────────────────────────────────────────────────────────
 
 describe("generateAppRoutes", () => {
-  it("creates all three route files", () => {
+  it("writes orycms component bodies and thin app-route shims", () => {
     mkdirSync(join(cwd, "app"), { recursive: true });
     const results = generateAppRoutes(makeCtx());
-    expect(results).toHaveLength(3);
+    // 3 routes × (orycms body + app shim) = 6 files
+    expect(results).toHaveLength(6);
     expect(results.every((r) => r.status === "created")).toBe(true);
+    // Bodies live under orycms/, entry files under app/
+    expect(results.some((r) => r.path === "orycms/admin/admin-page.tsx")).toBe(true);
+    expect(results.some((r) => r.path === "app/admin/page.tsx")).toBe(true);
+  });
+
+  it("app-route shims re-export their orycms body", () => {
+    mkdirSync(join(cwd, "app"), { recursive: true });
+    generateAppRoutes(makeCtx());
+    const shim = readTextFile(join(cwd, "app/admin/page.tsx"));
+    expect(shim).toContain('from "../../orycms/admin/admin-page"');
+  });
+
+  it("keeps all CMS source inside orycms/ (app files are shims only)", () => {
+    mkdirSync(join(cwd, "app"), { recursive: true });
+    generateAppRoutes(makeCtx());
+    const shim = readTextFile(join(cwd, "app/collections/page.tsx"));
+    // A shim is a single re-export line, not a component body
+    expect(shim).not.toContain("export default function");
+    expect(shim).toContain("export { default }");
   });
 
   it("skips routes that already exist", () => {
     mkdirSync(join(cwd, "app/admin"), { recursive: true });
     writeFileSync(join(cwd, "app/admin/page.tsx"), "existing");
     const results = generateAppRoutes(makeCtx());
-    const admin = results.find((r) => r.path.includes("admin"))!;
+    const admin = results.find((r) => r.path === "app/admin/page.tsx")!;
     expect(admin.status).toBe("skipped");
   });
 

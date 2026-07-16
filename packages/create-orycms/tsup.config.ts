@@ -22,7 +22,7 @@ export default defineConfig({
   ],
   esbuildOptions(options) {
     // Root monorepo src/ files (pulled in transitively via the CLI) use the @/ alias
-    options.alias = { "@": path.resolve(__dirname, "../../src") };
+    options.alias = { "@": path.resolve(__dirname, "../../orycms") };
   },
   async onSuccess() {
     chmodSync("dist/index.js", 0o755);

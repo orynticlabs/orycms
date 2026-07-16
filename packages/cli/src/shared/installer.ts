@@ -10,14 +10,14 @@ export {
   listInstalledOryCMSPlugins,
   uninstallOryCMSPlugin,
   updateOryCMSPlugin,
-} from "../../../../src/plugins/plugin.installer";
+} from "../../../../orycms/plugins/plugin.installer";
 
 export type {
   OryCMSInstallOptions,
   OryCMSInstallResult,
   OryCMSInstallStatus,
   OryCMSInstalledPluginEntry,
-} from "../../../../src/plugins/plugin.installer";
+} from "../../../../orycms/plugins/plugin.installer";
 
-export { readOryCMSPluginManifest } from "../../../../src/plugins/plugin.manifest";
-export type { OryCMSPluginManifest } from "../../../../src/plugins/plugin.manifest";
+export { readOryCMSPluginManifest } from "../../../../orycms/plugins/plugin.manifest";
+export type { OryCMSPluginManifest } from "../../../../orycms/plugins/plugin.manifest";
