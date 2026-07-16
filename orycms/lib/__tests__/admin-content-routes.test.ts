@@ -38,10 +38,10 @@ describe("admin content routes", () => {
 
   it("wires content UI links through canonical admin route helpers", () => {
     const files = [
-      "src/components/content/OryCMSCollectionContentPage.tsx",
-      "src/components/content/OryCMSContentForm.tsx",
-      "src/components/content/OryCMSContentTable.tsx",
-      "src/components/dashboard/AppSidebar.tsx",
+      "orycms/components/content/OryCMSCollectionContentPage.tsx",
+      "orycms/components/content/OryCMSContentForm.tsx",
+      "orycms/components/content/OryCMSContentTable.tsx",
+      "orycms/components/dashboard/AppSidebar.tsx",
     ];
 
     const source = files
