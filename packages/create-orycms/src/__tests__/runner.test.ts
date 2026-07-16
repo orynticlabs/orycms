@@ -119,20 +119,28 @@ describe("runCreate — core file generation", () => {
 // ── runCreate — admin bootstrap ────────────────────────────────────────────────
 
 describe("runCreate — admin bootstrap", () => {
-  it("creates app/admin/layout.tsx when installAdmin:true", async () => {
+  it("creates app/admin/layout.tsx shim when installAdmin:true", async () => {
     await runCreate({ cwd, answers: makeAnswers({ installAdmin: true }), skipDbOps: true });
     expect(fileExists(join(cwd, "app/admin/layout.tsx"))).toBe(true);
   });
 
-  it("creates app/admin/provider.tsx when installAdmin:true", async () => {
+  it("writes the admin provider body under orycms/ when installAdmin:true", async () => {
     await runCreate({ cwd, answers: makeAnswers({ installAdmin: true }), skipDbOps: true });
-    expect(fileExists(join(cwd, "app/admin/provider.tsx"))).toBe(true);
+    // CMS source lives in /orycms, not scattered under app/
+    expect(fileExists(join(cwd, "orycms/admin/provider.tsx"))).toBe(true);
+    expect(fileExists(join(cwd, "app/admin/provider.tsx"))).toBe(false);
+  });
+
+  it("writes admin layout/page bodies under orycms/", async () => {
+    await runCreate({ cwd, answers: makeAnswers({ installAdmin: true }), skipDbOps: true });
+    expect(fileExists(join(cwd, "orycms/admin/layout.tsx"))).toBe(true);
+    expect(fileExists(join(cwd, "orycms/admin/page.tsx"))).toBe(true);
   });
 
   it("does NOT create admin files when installAdmin:false", async () => {
     await runCreate({ cwd, answers: makeAnswers({ installAdmin: false }), skipDbOps: true });
     expect(fileExists(join(cwd, "app/admin/layout.tsx"))).toBe(false);
-    expect(fileExists(join(cwd, "app/admin/provider.tsx"))).toBe(false);
+    expect(fileExists(join(cwd, "orycms/admin/provider.tsx"))).toBe(false);
   });
 
   it("admin files appear in result.files when installAdmin:true", async () => {

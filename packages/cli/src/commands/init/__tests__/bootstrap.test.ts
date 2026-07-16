@@ -81,13 +81,16 @@ describe("detectAppStructure — admin dir", () => {
 describe("bootstrapAdmin — App Router", () => {
   beforeEach(() => mkdirSync(join(cwd, "app"), { recursive: true }));
 
-  it("creates layout.tsx, page.tsx, provider.tsx", async () => {
+  it("writes orycms bodies and app shims", async () => {
     const { files } = await bootstrapAdmin({ cwd });
-    expect(files).toHaveLength(3);
+    // 3 orycms bodies (layout/page/provider) + 2 app shims (layout/page)
+    expect(files).toHaveLength(5);
     const paths = files.map((f) => f.path);
+    expect(paths).toContain("orycms/admin/layout.tsx");
+    expect(paths).toContain("orycms/admin/page.tsx");
+    expect(paths).toContain("orycms/admin/provider.tsx");
     expect(paths).toContain("app/admin/layout.tsx");
     expect(paths).toContain("app/admin/page.tsx");
-    expect(paths).toContain("app/admin/provider.tsx");
   });
 
   it("all files have status 'created' on first run", async () => {
@@ -102,14 +105,26 @@ describe("bootstrapAdmin — App Router", () => {
 
   it("actually creates the files on disk", async () => {
     await bootstrapAdmin({ cwd });
+    expect(fileExists(join(cwd, "orycms/admin/layout.tsx"))).toBe(true);
+    expect(fileExists(join(cwd, "orycms/admin/page.tsx"))).toBe(true);
+    expect(fileExists(join(cwd, "orycms/admin/provider.tsx"))).toBe(true);
     expect(fileExists(join(cwd, "app/admin/layout.tsx"))).toBe(true);
     expect(fileExists(join(cwd, "app/admin/page.tsx"))).toBe(true);
-    expect(fileExists(join(cwd, "app/admin/provider.tsx"))).toBe(true);
   });
 
-  it("creates admin dir when it does not exist", async () => {
+  it("app shims re-export from orycms/admin", async () => {
+    await bootstrapAdmin({ cwd });
+    const layoutShim = readTextFile(join(cwd, "app/admin/layout.tsx"));
+    const pageShim = readTextFile(join(cwd, "app/admin/page.tsx"));
+    expect(layoutShim).toContain('from "../../orycms/admin/layout"');
+    expect(layoutShim).toContain("metadata");
+    expect(pageShim).toContain('from "../../orycms/admin/page"');
+  });
+
+  it("creates admin dirs when they do not exist", async () => {
     await bootstrapAdmin({ cwd });
     expect(fileExists(join(cwd, "app/admin"))).toBe(true);
+    expect(fileExists(join(cwd, "orycms/admin"))).toBe(true);
   });
 });
 
@@ -122,39 +137,45 @@ describe("bootstrapAdmin — App Router file content", () => {
   });
 
   it("layout.tsx imports AdminProvider from ./provider", () => {
-    const layout = readTextFile(join(cwd, "app/admin/layout.tsx"));
+    const layout = readTextFile(join(cwd, "orycms/admin/layout.tsx"));
     expect(layout).toContain('import { AdminProvider } from "./provider"');
   });
 
   it("layout.tsx exports a default function", () => {
-    const layout = readTextFile(join(cwd, "app/admin/layout.tsx"));
+    const layout = readTextFile(join(cwd, "orycms/admin/layout.tsx"));
     expect(layout).toContain("export default function AdminLayout");
   });
 
   it("layout.tsx includes Next.js Metadata export", () => {
-    const layout = readTextFile(join(cwd, "app/admin/layout.tsx"));
+    const layout = readTextFile(join(cwd, "orycms/admin/layout.tsx"));
     expect(layout).toContain("export const metadata");
     expect(layout).toContain("robots");
   });
 
   it("provider.tsx has 'use client' directive", () => {
-    const provider = readTextFile(join(cwd, "app/admin/provider.tsx"));
+    const provider = readTextFile(join(cwd, "orycms/admin/provider.tsx"));
     expect(provider).toContain('"use client"');
   });
 
   it("provider.tsx exports AdminProvider function", () => {
-    const provider = readTextFile(join(cwd, "app/admin/provider.tsx"));
+    const provider = readTextFile(join(cwd, "orycms/admin/provider.tsx"));
     expect(provider).toContain("export function AdminProvider");
   });
 
-  it("page.tsx exports a default React component", () => {
-    const page = readTextFile(join(cwd, "app/admin/page.tsx"));
+  it("page.tsx body exports a default React component", () => {
+    const page = readTextFile(join(cwd, "orycms/admin/page.tsx"));
     expect(page).toContain("export default function AdminPage");
     expect(page).toContain("<main>");
   });
 
   it("all generated files contain the OryCMS Admin marker", () => {
-    for (const rel of ["app/admin/layout.tsx", "app/admin/page.tsx", "app/admin/provider.tsx"]) {
+    for (const rel of [
+      "orycms/admin/layout.tsx",
+      "orycms/admin/page.tsx",
+      "orycms/admin/provider.tsx",
+      "app/admin/layout.tsx",
+      "app/admin/page.tsx",
+    ]) {
       const content = readTextFile(join(cwd, rel));
       expect(content).toContain("// OryCMS Admin");
     }
@@ -247,11 +268,14 @@ describe("bootstrapAdmin — user file preservation", () => {
 describe("bootstrapAdmin — Pages Router", () => {
   beforeEach(() => mkdirSync(join(cwd, "pages"), { recursive: true }));
 
-  it("generates pages/admin/index.tsx only", async () => {
+  it("generates orycms bodies + a single pages/admin/index shim", async () => {
     const { files } = await bootstrapAdmin({ cwd });
-    expect(files).toHaveLength(1);
-    expect(files[0].path).toBe("pages/admin/index.tsx");
-    expect(files[0].status).toBe("created");
+    // orycms/admin/page.tsx, orycms/admin/provider.tsx, pages/admin/index.tsx
+    expect(files).toHaveLength(3);
+    const paths = files.map((f) => f.path);
+    expect(paths).toContain("pages/admin/index.tsx");
+    expect(paths).toContain("orycms/admin/page.tsx");
+    expect(files.every((f) => f.status === "created")).toBe(true);
   });
 
   it("creates the file on disk", async () => {
@@ -259,22 +283,23 @@ describe("bootstrapAdmin — Pages Router", () => {
     expect(fileExists(join(cwd, "pages/admin/index.tsx"))).toBe(true);
   });
 
-  it("index.tsx is a valid React component with the sentinel", () => {
-    // Check content synchronously after async run
+  it("index shim re-exports the orycms page body", () => {
     return bootstrapAdmin({ cwd }).then(() => {
-      const content = readTextFile(join(cwd, "pages/admin/index.tsx"));
-      expect(content).toContain("// OryCMS Admin");
-      expect(content).toContain("export default function AdminPage");
+      const shim = readTextFile(join(cwd, "pages/admin/index.tsx"));
+      expect(shim).toContain("// OryCMS Admin");
+      expect(shim).toContain('from "../../orycms/admin/page"');
+      const body = readTextFile(join(cwd, "orycms/admin/page.tsx"));
+      expect(body).toContain("export default function AdminPage");
     });
   });
 
-  it("is idempotent — second run skips the file", async () => {
+  it("is idempotent — second run skips all files", async () => {
     await bootstrapAdmin({ cwd });
     const { files } = await bootstrapAdmin({ cwd });
-    expect(files[0].status).toBe("skipped");
+    expect(files.every((f) => f.status === "skipped")).toBe(true);
   });
 
-  it("pages router does NOT generate layout.tsx", async () => {
+  it("pages router does NOT generate a layout", async () => {
     const { files } = await bootstrapAdmin({ cwd });
     expect(files.some((f) => f.path.includes("layout"))).toBe(false);
   });
@@ -302,12 +327,17 @@ describe("bootstrapAdmin — result shape", () => {
     mkdirSync(join(cwd, "app"), { recursive: true });
     const { files, structure } = await bootstrapAdmin({ cwd, adminBasePath: "cms" });
     expect(structure.adminDirPath).toBe("app/cms");
-    expect(files.every((f) => f.path.startsWith("app/cms/"))).toBe(true);
+    // Shims under app/cms, bodies under orycms/cms
+    expect(files.every((f) => f.path.startsWith("app/cms/") || f.path.startsWith("orycms/cms/"))).toBe(true);
+    expect(files.some((f) => f.path.startsWith("app/cms/"))).toBe(true);
+    expect(files.some((f) => f.path.startsWith("orycms/cms/"))).toBe(true);
   });
 
-  it("does not generate files outside the admin directory", async () => {
+  it("only generates files under the admin base path (app/ shims + orycms/ bodies)", async () => {
     mkdirSync(join(cwd, "app"), { recursive: true });
     const { files } = await bootstrapAdmin({ cwd });
-    expect(files.every((f) => f.path.startsWith("app/admin/"))).toBe(true);
+    expect(
+      files.every((f) => f.path.startsWith("app/admin/") || f.path.startsWith("orycms/admin/")),
+    ).toBe(true);
   });
 });

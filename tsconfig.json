@@ -5,8 +5,8 @@
     "app/**/*.tsx",
     "instrumentation.ts",
     "orycms.config.ts",
-    "src/**/*.ts",
-    "src/**/*.tsx",
+    "orycms/**/*.ts",
+    "orycms/**/*.tsx",
     "next.config.ts",
     "eslint.config.js",
     ".next/types/**/*.ts",
@@ -36,7 +36,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./orycms/*"]
     },
     "plugins": [
       {

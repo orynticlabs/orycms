@@ -62,12 +62,23 @@ describe("runInit", () => {
     expect(fileExists(join(cwd, ".env.example"))).toBe(true);
   });
 
-  it("creates app/admin/page.tsx", () => {
+  it("creates app/admin/page.tsx as a shim into orycms/", () => {
     runInit({ cwd, packageManager: "npm", answers: makeAnswers() });
     expect(fileExists(join(cwd, "app/admin/page.tsx"))).toBe(true);
+    // CMS body lives under orycms/, app file is a thin re-export
+    expect(fileExists(join(cwd, "orycms/admin/admin-page.tsx"))).toBe(true);
+    expect(readTextFile(join(cwd, "app/admin/page.tsx"))).toContain(
+      'from "../../orycms/admin/admin-page"',
+    );
   });
 
-  it("creates app/collections/page.tsx and app/plugins/page.tsx", () => {
+  it("keeps CMS route bodies inside orycms/ for all generated routes", () => {
+    runInit({ cwd, packageManager: "npm", answers: makeAnswers() });
+    expect(fileExists(join(cwd, "orycms/admin/collections-page.tsx"))).toBe(true);
+    expect(fileExists(join(cwd, "orycms/admin/plugins-page.tsx"))).toBe(true);
+  });
+
+  it("creates app/collections/page.tsx and app/plugins/page.tsx shims", () => {
     runInit({ cwd, packageManager: "npm", answers: makeAnswers() });
     expect(fileExists(join(cwd, "app/collections/page.tsx"))).toBe(true);
     expect(fileExists(join(cwd, "app/plugins/page.tsx"))).toBe(true);

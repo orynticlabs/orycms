@@ -12,6 +12,6 @@ export default defineConfig({
     ],
   },
   resolve: {
-    alias: { "@": path.join(process.cwd(), "src") },
+    alias: { "@": path.join(process.cwd(), "orycms") },
   },
 });

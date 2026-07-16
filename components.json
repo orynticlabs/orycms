@@ -4,7 +4,7 @@
   "rsc": true,
   "tsx": true,
   "tailwind": {
-    "css": "src/styles.css",
+    "css": "orycms/styles.css",
     "baseColor": "slate",
     "cssVariables": true,
     "prefix": ""
