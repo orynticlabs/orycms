@@ -1,5 +1,5 @@
-import { loadOryCMSConfig } from "../../../../src/config/config.loader";
-import type { OryCMSConfig, OryCMSLoadConfigOptions } from "../../../../src/config/config.types";
+import { loadOryCMSConfig } from "../../../../orycms/config/config.loader";
+import type { OryCMSConfig, OryCMSLoadConfigOptions } from "../../../../orycms/config/config.types";
 
 /**
  * Load the OryCMS configuration from orycms.config.ts in the given directory.

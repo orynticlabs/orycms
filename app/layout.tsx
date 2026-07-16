@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "../src/styles.css";
+import "../orycms/styles.css";
 
 export const metadata: Metadata = {
   title: "OryCMS by OrynticLabs Private Limited",
