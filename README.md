@@ -1,457 +1,255 @@
-# OryCMS
-
 <div align="center">
 
-### The Modern CMS & Application Platform for Next.js
+# OryCMS
 
-Build content-rich websites, ecommerce experiences, admin dashboards, and custom business applications with a powerful TypeScript backend and enterprise-grade admin panel.
+### The open-source CMS and application framework for Next.js
 
-Built by Oryntic Labs.
+Define your content in TypeScript and get a production-ready admin dashboard, REST API, authentication, and role-based access control — running inside your own Next.js app, on your own infrastructure.
+
+[![npm core](https://img.shields.io/npm/v/@ory-cms/core?label=%40ory-cms%2Fcore)](https://www.npmjs.com/package/@ory-cms/core)
+[![npm next](https://img.shields.io/npm/v/@ory-cms/next?label=%40ory-cms%2Fnext)](https://www.npmjs.com/package/@ory-cms/next)
+[![npm cli](https://img.shields.io/npm/v/@ory-cms/cli?label=%40ory-cms%2Fcli)](https://www.npmjs.com/package/@ory-cms/cli)
+[![license](https://img.shields.io/npm/l/@ory-cms/core)](./LICENSE)
+
+Built by **OrynticLabs Private Limited**
+
+[Documentation](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/) · [npm](https://www.npmjs.com/org/ory-cms) · [Issues](https://github.com/orynticlabs/orycms/issues)
 
 </div>
 
 ---
 
-## Overview
+## What is OryCMS?
 
-OryCMS is an open-source fullstack platform built on Next.js that combines content management, admin tools, APIs, authentication, and developer-friendly workflows into a single integrated experience.
+OryCMS is a self-hosted content management system that installs as a set of npm packages directly into your Next.js project. There is no separate service to run and no vendor to sign up for — the CMS lives in your codebase alongside the rest of your application.
 
-Whether you're building a marketing website, ecommerce platform, SaaS product, internal dashboard, or enterprise application, OryCMS provides the foundation to launch faster and scale confidently.
-
-## Why OryCMS?
-
-Most CMS solutions force teams to choose between flexibility and speed.
-
-OryCMS delivers both.
-
-### Key Benefits
-
-- Fullstack Next.js architecture
-- Built-in Admin Dashboard
-- TypeScript-first development
-- Flexible content modeling
-- Authentication & Role Management
-- Media Library
-- API-first architecture
-- SEO-ready content management
-- Ecommerce-ready foundation
-- Self-hosted and open source
-- Developer-friendly experience
-- Enterprise-grade scalability
+You describe your content as **collections** in plain TypeScript. From that single definition, OryCMS builds the admin screens, the database table, and the REST API automatically.
 
 ---
 
-# Features
+## Quick start
 
-## Content Management
-
-- Dynamic content collections
-- Custom fields and schemas
-- Rich text editor
-- Media management
-- Drafts and publishing workflows
-- Version history
-- Scheduled publishing
-- SEO metadata support
-
-## Admin Dashboard
-
-- Modern enterprise-grade interface
-- Analytics overview
-- User management
-- Content moderation
-- Role-based access control
-- Activity logs
-- Quick actions
-- Global search
-
-## Developer Experience
-
-- TypeScript support
-- Next.js App Router
-- REST APIs
-- GraphQL APIs
-- Custom endpoints
-- Hooks & lifecycle events
-- Plugin architecture
-- Reusable UI components
-
-## Authentication
-
-- Email & password login
-- Social authentication
-- Role management
-- Team permissions
-- Protected routes
-- Session management
-
-## Media Management
-
-- Image uploads
-- Video uploads
-- File management
-- Cloud storage support
-- Image optimization
-- CDN integration
-
-## Ecommerce Foundation
-
-- Products
-- Categories
-- Inventory
-- Orders
-- Customers
-- Coupons
-- Discounts
-- Analytics
-
----
-
-# Tech Stack
-
-### Frontend
-
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- Shadcn UI
-
-### Backend
-
-- Next.js Server Actions
-- TypeScript
-- REST API
-- GraphQL API
-
-### Database
-
-Supported databases:
-
-- PostgreSQL
-- MongoDB
-- MySQL (optional)
-
-### Authentication
-
-- NextAuth/Auth.js
-- JWT
-- OAuth Providers
-
-### Storage
-
-- Local Storage
-- AWS S3
-- Cloudflare R2
-- Supabase Storage
-
----
-
-# Project Structure
-
-```bash
-orycms/
-│
-├── src/
-│   ├── app/
-│   ├── admin/
-│   ├── collections/
-│   ├── components/
-│   ├── hooks/
-│   ├── lib/
-│   ├── services/
-│   ├── providers/
-│   └── styles/
-│
-├── public/
-├── uploads/
-├── docs/
-├── scripts/
-│
-├── package.json
-├── tsconfig.json
-├── next.config.ts
-└── README.md
-```
-
----
-
-# npm Packages
-
-OryCMS is distributed as a set of focused npm packages under the `@ory-cms` scope.
-
-| Package | Status | Purpose |
-|---|---|---|
-| `@ory-cms/core` | Ready to publish | Schema engine, RBAC, hooks, auth, database adapters |
-| `@ory-cms/next` | Ready to publish | Next.js 15 integration — admin dashboard UI + shadcn/ui components |
-| `@ory-cms/react` | Coming soon | Headless React hooks for frontend consumption |
-| `@ory-cms/cli` | **Published** | CLI — init, migrate, seed, plugin commands |
-| `@ory-cms/plugin-sdk` | Coming soon | Types and helpers for building plugins |
-| `create-ory-cms` | **Published** | Project scaffolder — `npx create-ory-cms` |
-
-> **Note:** `@ory-cms/core` and `@ory-cms/next` are built, tested, and packaged — ready for `npm publish`. Until they are live on npm, **use the git-clone installation below**. Once published, `npx create-ory-cms` and `@ory-cms/cli init` will install them automatically.
-
----
-
-# Getting Started
-
-## Prerequisites
-
-- Node.js 22+ or 24+
-- PostgreSQL
-- Git
-
----
-
-## Installation
-
-### Option A — Git clone (recommended until all packages are published)
-
-```bash
-git clone https://github.com/orynticlabs/orycms.git
-cd orycms
-npm install
-cp .env.example .env
-npm run dev
-```
-
-Application available at `http://localhost:3000`.
-
----
-
-### Option B — npm (once all packages are published)
-
-**New project:**
+Create a new project in one command:
 
 ```bash
 npx create-ory-cms my-app
 cd my-app
+npm run dev
 ```
 
-**Add to an existing Next.js project:**
+Open [http://localhost:3000](http://localhost:3000) and create your Owner account. That's it.
 
-```bash
-# 1. Install the runtime packages
-npm install @ory-cms/core @ory-cms/next
-
-# 2. Run the interactive init wizard
-npx @ory-cms/cli init
-
-# 3. Apply database migrations
-npx @ory-cms/cli db:migrate
-```
-
-**Optional packages:**
-
-```bash
-# React hooks for your frontend
-npm install @ory-cms/react
-
-# Plugin development
-npm install --save-dev @ory-cms/plugin-sdk
-```
-
-> Installing `@ory-cms/cli` alone is not enough. The CLI scaffolds your project and tells you to install `@ory-cms/core`, which is the actual CMS engine. You need **both** the CLI and the core package for a working setup.
+> New to OryCMS? The **[Quick Start guide](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/quick-start)** walks through every step.
 
 ---
 
-## Environment Variables
+## Add to an existing Next.js app
+
+Already have a Next.js project? Add OryCMS without touching your existing routes:
+
+```bash
+# 1. Install the two runtime packages
+npm install @ory-cms/core @ory-cms/next
+
+# 2. Run the setup wizard (generates config + admin routes)
+npx @ory-cms/cli init
+
+# 3. Create the OryCMS database tables
+npx @ory-cms/cli db:migrate
+
+# 4. Start your app — the dashboard is now at /admin
+npm run dev
+```
+
+Your existing pages, API routes, and database tables are left completely alone. OryCMS only occupies `/admin`, `/collections`, `/plugins`, and `/api/orycms/`, and its tables are all prefixed `orycms_`.
+
+Full walkthrough: **[Add to an Existing Project](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/add-to-existing-project)**.
+
+---
+
+## Packages
+
+| Package | Version | Description |
+|---|---|---|
+| [`@ory-cms/core`](https://www.npmjs.com/package/@ory-cms/core) | ![](https://img.shields.io/npm/v/@ory-cms/core) | The engine — schema, auth, roles, hooks, database adapters (server-side) |
+| [`@ory-cms/next`](https://www.npmjs.com/package/@ory-cms/next) | ![](https://img.shields.io/npm/v/@ory-cms/next) | The Next.js layer — admin dashboard UI and React components |
+| [`@ory-cms/cli`](https://www.npmjs.com/package/@ory-cms/cli) | ![](https://img.shields.io/npm/v/@ory-cms/cli) | CLI — `init`, `db:migrate`, `db:seed`, plugin management |
+| [`create-ory-cms`](https://www.npmjs.com/package/create-ory-cms) | ![](https://img.shields.io/npm/v/create-ory-cms) | Scaffolder — `npx create-ory-cms my-app` |
+| `@ory-cms/react` | _coming soon_ | Headless React hooks for consuming content in a frontend |
+| `@ory-cms/plugin-sdk` | _coming soon_ | Typed helpers and testing utilities for plugin authors |
+
+**The rule of thumb:** `core` is the brain, `next` is the face, and the two CLIs are the tools that wire everything together. See the **[Packages guide](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/packages)** for details.
+
+---
+
+## Define your first collection
+
+A collection is a content type. Define it once and OryCMS handles the rest:
+
+```ts
+// orycms.config.ts
+import { defineOryCMSConfig, defineOryCMSCollection } from "@ory-cms/core";
+
+const Posts = defineOryCMSCollection({
+  name: "Posts",
+  slug: "posts",
+  tableName: "posts",
+  fields: [
+    { name: "title",       type: "text",     required: true },
+    { name: "slug",        type: "slug",     required: true, unique: true },
+    { name: "body",        type: "richText" },
+    { name: "coverImage",  type: "media" },
+    { name: "publishedAt", type: "date",     includeTime: true },
+  ],
+});
+
+export default defineOryCMSConfig({
+  collections: [Posts],
+});
+```
+
+You now have an admin screen for posts at `/admin`, and a REST API:
+
+```
+GET    /api/orycms/collections/posts/content        # list published posts (public)
+POST   /api/orycms/collections/posts/content        # create a post (auth required)
+PATCH  /api/orycms/collections/posts/content/:id    # update a post
+DELETE /api/orycms/collections/posts/content/:id    # delete a post
+```
+
+---
+
+## Features
+
+**Content**
+- Schema-driven collections with 13 field types (text, rich text, media, relation, select, and more)
+- Draft and published states, per-entry
+- A media library for images and files
+
+**Access control**
+- Email + password authentication with secure HTTP-only session cookies (bcrypt hashing)
+- Five built-in roles — Owner, Admin, Editor, Author, Viewer
+- Fine-grained, per-resource permissions
+
+**Extensibility**
+- A plugin system for adding features without editing the core
+- Lifecycle hooks that run your code before or after any content, media, or auth operation
+
+**Database**
+- Adapters for PostgreSQL, MySQL, MongoDB, Firebase, and Oracle
+- Idempotent migrations you can run safely, repeatedly
+
+---
+
+## Tech stack
+
+- **Next.js 15** (App Router) · **React 19** · **TypeScript**
+- **Tailwind CSS v4** with **Radix UI** / shadcn/ui components
+- **PostgreSQL** (recommended) and other adapters
+- **bcrypt** password hashing, cookie-based sessions
+
+---
+
+## Requirements
+
+- Node.js 18 or newer
+- A database — PostgreSQL is the smoothest choice ([Neon](https://neon.tech) and [Supabase](https://supabase.com) offer free hosted instances)
+
+---
+
+## Environment variables
 
 ```env
-# Database (required)
-DATABASE_URL=postgresql://user:password@localhost:5432/orycms
-
-# Auth (required)
-NEXTAUTH_SECRET=your-random-secret
+# Required
+DATABASE_URL=postgresql://user:password@localhost:5432/mydb
+NEXTAUTH_SECRET=a-long-random-string        # generate with: openssl rand -base64 32
 NEXTAUTH_URL=http://localhost:3000
 
-# Storage (optional)
+# Optional — object storage
 S3_ACCESS_KEY=
 S3_SECRET_KEY=
 S3_BUCKET=
 
-# Email (optional)
+# Optional — email
 EMAIL_HOST=
-EMAIL_PORT=
+EMAIL_PORT=587
 EMAIL_USER=
 EMAIL_PASSWORD=
 ```
 
 ---
 
-## Database Setup
+## Documentation
 
-Run migrations:
+The full documentation lives on GitBook:
 
-```bash
-npm run db:migrate
-```
-
-Seed development data:
-
-```bash
-npm run db:seed
-```
-
-Open database studio:
-
-```bash
-npm run db:studio
-```
+- **[Quick Start](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/quick-start)** — a new project in five minutes
+- **[Add to an Existing Project](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/add-to-existing-project)** — drop OryCMS into an app you already have
+- **[Packages](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/packages)** — what each package does
+- **[Collections & Fields](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/collections-and-fields)** — modelling your content
+- **[Authentication](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/authentication)** and **[Roles & Permissions](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/roles-and-permissions)**
+- **[API Reference](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/api-reference)**
+- **[Deployment](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/deployment)**
 
 ---
 
-# Admin Dashboard
+## Deployment
 
-Access the admin panel:
+OryCMS is a standard Next.js app, so it deploys anywhere Next.js runs:
 
-```text
-http://localhost:3000/admin
-```
+- **Vercel** — `vercel deploy`
+- **Docker** — `docker build -t orycms . && docker run -p 3000:3000 orycms`
+- **Any Node host / VPS** — Hetzner, DigitalOcean, Railway, AWS, and others
 
-Default capabilities include:
-
-- Content Management
-- User Management
-- Analytics
-- Media Library
-- Ecommerce Operations
-- Settings
+See the **[Deployment guide](https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/deployment)** for the full checklist.
 
 ---
 
-# API Access
+## Keeping OryCMS up to date
 
-## REST API
+New features land on GitHub first, then ship as new npm versions. To upgrade:
 
 ```bash
-GET /api/posts
-GET /api/products
-POST /api/posts
-PATCH /api/posts/:id
-DELETE /api/posts/:id
+npm install @ory-cms/core@latest @ory-cms/next@latest
+npx @ory-cms/cli db:migrate     # apply any new schema changes (safe to re-run)
 ```
+
+OryCMS follows semantic versioning. Breaking changes are documented in each package's `CHANGELOG.md` and in the [GitHub releases](https://github.com/orynticlabs/orycms/releases).
 
 ---
 
-## GraphQL
+## Contributing
 
-```bash
-POST /api/graphql
+Contributions are welcome — bug reports, documentation fixes, new database adapters, and plugins.
+
 ```
-
-Example Query:
-
-```graphql
-query {
-  posts {
-    title
-    slug
-  }
-}
-```
-
----
-
-# Deployment
-
-## Vercel
-
-```bash
-vercel deploy
-```
-
-## Docker
-
-```bash
-docker build -t orycms .
-docker run -p 3000:3000 orycms
-```
-
-## VPS
-
-Recommended:
-
-- Hetzner
-- DigitalOcean
-- AWS
-- Hostinger VPS
-- Railway
-
----
-
-# Security
-
-OryCMS includes:
-
-- CSRF Protection
-- Secure Authentication
-- Rate Limiting
-- Input Validation
-- XSS Protection
-- Content Sanitization
-- Role-Based Permissions
-
----
-
-# Roadmap
-
-## Version 1
-
-- CMS Core
-- Authentication
-- Admin Dashboard
-- Media Library
-- APIs
-
-## Version 2
-
-- Ecommerce Suite
-- Email Marketing
-- Form Builder
-- Workflow Automation
-
-## Version 3
-
-- AI Content Assistant
-- AI Search
-- Visual Page Builder
-- Multi-Tenant Support
-
----
-
-# Contributing
-
-We welcome contributions from the community.
-
-```bash
 fork → branch → commit → pull request
 ```
 
-Please read the contribution guidelines before submitting changes.
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before submitting changes, and note the [Code of Conduct](./CODE_OF_CONDUCT.md).
+
+For security issues, do **not** open a public issue — email **security@orynticlabs.com**. See [SECURITY.md](./SECURITY.md).
 
 ---
 
-# License
+## Roadmap
 
-MIT License
-
-Copyright © Oryntic Labs
+- **Now** — CMS core, authentication, admin dashboard, media library, REST API, plugin engine
+- **Next** — `@ory-cms/react` frontend hooks, `@ory-cms/plugin-sdk`, ecommerce collections, form builder
+- **Later** — visual page builder, multi-tenant support, workflow automation
 
 ---
 
-# About Oryntic Labs
+## License
 
-Oryntic Labs builds modern developer tools, SaaS platforms, and enterprise-grade products focused on performance, scalability, and exceptional user experience.
+[MIT](./LICENSE) © OrynticLabs Private Limited
 
 ---
 
 <div align="center">
 
-### OryCMS
+**OryCMS** — Build. Manage. Scale.
 
-Build. Manage. Scale.
-
-Powered by OrynticLabs.
+Built by [OrynticLabs Private Limited](https://github.com/orynticlabs)
 
 </div>
