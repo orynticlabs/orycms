@@ -4,7 +4,6 @@ import type { Pool } from "pg";
 // Uses Web API Request — compatible with NextRequest (which extends Request)
 import { OryCMSAuthError } from "./auth.errors";
 import { getOryCMSPool } from "@/lib/db";
-import { buildOryCMSHookContext, runOryCMSBeforeHooks, runOryCMSAfterHooks } from "@/hooks";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -102,11 +101,6 @@ export async function authenticateOryCMSUser(
 ): Promise<OryCMSAuthUser> {
   const normEmail = email.toLowerCase().trim();
 
-  await runOryCMSBeforeHooks(
-    "beforeLogin",
-    buildOryCMSHookContext("beforeLogin", null, { email: normEmail }, null),
-  );
-
   const result = await pool.query<OryCMSAuthUser & { passwordHash: string }>(
     `SELECT id, email, "passwordHash", status, "roleId"
      FROM orycms_users
@@ -134,10 +128,6 @@ export async function authenticateOryCMSUser(
     );
   }
 
-  await runOryCMSAfterHooks(
-    "afterLogin",
-    buildOryCMSHookContext("afterLogin", null, { id: user.id, email: user.email }, null),
-  );
   return user;
 }
 
@@ -165,12 +155,7 @@ export async function createOryCMSUserSession(pool: Pool, userId: string): Promi
  * Safe to call with an invalid token (no-op).
  */
 export async function destroyOryCMSUserSession(pool: Pool, rawToken: string): Promise<void> {
-  await runOryCMSBeforeHooks(
-    "beforeLogout",
-    buildOryCMSHookContext("beforeLogout", null, { token: "[redacted]" }, null),
-  );
   await pool.query(`DELETE FROM orycms_sessions WHERE "tokenHash" = $1`, [hashToken(rawToken)]);
-  await runOryCMSAfterHooks("afterLogout", buildOryCMSHookContext("afterLogout", null, {}, null));
 }
 
 /**

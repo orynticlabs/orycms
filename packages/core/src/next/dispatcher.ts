@@ -1,4 +1,3 @@
-import { toErrorResponse } from "@/lib/route-guards";
 import type { OryCMSEndpoint, OryCMSHandlerContext } from "./http";
 import { jsonError } from "./http";
 import { ORYCMS_ROUTES } from "./routes";
@@ -110,9 +109,9 @@ export function createOryCMSRouteHandlers(
       const ctx: OryCMSHandlerContext = { request, params, url };
       try {
         return await route.handler(ctx);
-      } catch (err) {
+      } catch {
         // Uniform error envelope — mirrors the per-route try/catch in the app.
-        return toErrorResponse(err);
+        return jsonError("INTERNAL_ERROR", "Request failed.", 500);
       }
     }
 

@@ -1,40 +1,41 @@
 # @ory-cms/next
 
-OryCMS Next.js integration — admin dashboard UI, content management components, and shadcn/ui primitives.
+The OryCMS MVP first-run UI for Next.js: setup, login, session provider, and a working admin dashboard shell.
 
-## Installation
+## Install
 
 ```bash
-npm install @ory-cms/next @ory-cms/core
+npm install @ory-cms/core @ory-cms/next
 ```
 
-## Requirements
+Set `ORYCMS_DATABASE_URL` to a PostgreSQL connection string and import the package CSS in `app/layout.tsx`:
 
-- Node.js 18+
-- Next.js 14+
-- React 18+
-- `@ory-cms/core` (peer dependency)
-- Tailwind CSS v4 (peer dependency)
-
-## What's included
-
-- **Admin dashboard** — `AppShell`, `AppSidebar`, `Dashboard`, `Topbar`, `InsightsPanel`
-- **Content UI** — `OryCMSCollectionContentPage`, `OryCMSContentForm`, `OryCMSContentTable`
-- **Collection UI** — `OryCMSCollectionsAdminPage`, `OryCMSCollectionSchemaEditor`
-- **Media UI** — `OryCMSMediaLibrary`
-- **46 shadcn/ui primitives** — accordion, button, dialog, select, table, and more
-- **Hooks** — `useIsMobile`
-- **CSS** — import from `@ory-cms/next/styles.css`
-
-## Usage
-
-```ts
-import { AppShell, AppSidebar } from "@ory-cms/next";
+```tsx
 import "@ory-cms/next/styles.css";
 ```
 
-## Links
+Add these App Router files:
 
-- **GitHub**: https://github.com/orynticlabs/orycms
-- **Docs**: https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/
-- **npm**: https://www.npmjs.com/package/@ory-cms/next
+```tsx
+// app/setup/page.tsx
+export { OryCMSSetupPage as default } from "@ory-cms/next";
+
+// app/login/page.tsx
+export { OryCMSLoginPage as default } from "@ory-cms/next";
+
+// app/admin/page.tsx
+export { OryCMSAdmin as default } from "@ory-cms/next";
+```
+
+```ts
+// app/api/orycms/[...ory]/route.ts
+import { createOryCMSRouteHandlers } from "@ory-cms/core/next";
+
+export const { GET, POST, PATCH, PUT, DELETE } = createOryCMSRouteHandlers();
+```
+
+Start Next.js and open `/setup`, then `/login`, then `/admin`.
+
+## MVP scope
+
+This release intentionally includes only authentication, first-run setup, the session provider, dashboard shell, sidebar, and minimal dashboard UI. Collections, Content, Media, Plugins, SEO, Commerce, Analytics, and other advanced modules remain in the OryCMS reference project for future package releases.

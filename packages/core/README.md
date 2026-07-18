@@ -1,52 +1,22 @@
 # @ory-cms/core
 
-The OryCMS runtime engine — auth, schema, content, plugins, hooks, RBAC, and database adapters.
+The OryCMS MVP runtime for first-run setup, login, and database-backed sessions.
 
-## Installation
+## Install
 
 ```bash
-npm install @ory-cms/core
+npm install @ory-cms/core @ory-cms/next
 ```
 
-## Requirements
-
-- Node.js 18+
-- PostgreSQL 14+ (or another supported adapter)
-
-## What's included
-
-| Module | Exports |
-|---|---|
-| Schema engine | `defineOryCMSCollection`, `registerOryCMSCollection` |
-| Authentication | `loginOryCMSUser`, `logoutOryCMSUser`, `protectOryCMSAdminRoute` |
-| RBAC | `hasOryCMSPermission`, `requireOryCMSPermission` |
-| Hooks | `registerOryCMSHook`, `runOryCMSBeforeHooks`, `runOryCMSAfterHooks` |
-| Database | `OryCMSDatabaseAdapter` + PostgreSQL/MySQL/MongoDB/Firebase/Oracle adapters |
-| Config | `defineOryCMSConfig` |
-| Migrations | `installOryCMSCoreSchema` |
-
-## Usage
+Set `ORYCMS_DATABASE_URL` to PostgreSQL, then mount the handlers in one Next.js App Router catch-all route:
 
 ```ts
-import { defineOryCMSConfig, defineOryCMSCollection } from "@ory-cms/core";
+// app/api/orycms/[...ory]/route.ts
+import { createOryCMSRouteHandlers } from "@ory-cms/core/next";
 
-const Posts = defineOryCMSCollection({
-  name: "Posts",
-  slug: "posts",
-  tableName: "posts",
-  fields: [
-    { name: "title", type: "text", required: true },
-    { name: "body",  type: "richText" },
-  ],
-});
-
-export default defineOryCMSConfig({
-  collections: [Posts],
-});
+export const { GET, POST, PATCH, PUT, DELETE } = createOryCMSRouteHandlers();
 ```
 
-## Links
+The first request to `/api/orycms/auth/setup-status` installs the minimal auth schema. `POST /api/orycms/auth/setup` creates the Owner; login returns an HTTP-only session cookie.
 
-- **GitHub**: https://github.com/orynticlabs/orycms
-- **Docs**: https://app.gitbook.com/s/CeQC9SBiUJdsP67uHBWI/
-- **npm**: https://www.npmjs.com/package/@ory-cms/core
+Advanced content, media, plugin, SEO, commerce, and analytics runtimes are not part of this MVP package.

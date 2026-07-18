@@ -1,0 +1,5 @@
+[mcp_servers.gitbook]
+url = "https://mcp.gitbook.com/api/mcp"
+
+[mcp_servers.gitbook.http_headers]
+Authorization = "gb_api_JkYu3LoDYW6Sq0UWKp4uZ7qbuQW2fKycBA1JcuGD"

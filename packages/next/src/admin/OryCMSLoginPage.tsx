@@ -109,7 +109,7 @@ function LoginForm() {
               Operations workspace
             </p>
             <h1 className="mt-3 text-[36px] font-semibold leading-tight tracking-tight xl:text-[42px]">
-              Sign in to manage orders, content, and your storefront.
+              Sign in to your OryCMS dashboard.
             </h1>
             <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
               This admin console is reserved for workspace operators. Enter your credentials to
