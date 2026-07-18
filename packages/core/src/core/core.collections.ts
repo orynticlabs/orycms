@@ -159,6 +159,62 @@ const orySessions = defineOryCMSCollection({
   ],
 });
 
+const oryTokens = defineOryCMSCollection({
+  name: "OryTokens",
+  slug: "orycms-tokens",
+  tableName: "orycms_tokens",
+  labels: { singular: "Token", plural: "Tokens" },
+  description: "Single-use security tokens for invite, activation, and password-reset flows.",
+  fields: [
+    {
+      name: "userId",
+      type: "relation",
+      target: "orycms-users",
+      cardinality: "one",
+      cascadeDelete: true,
+    },
+    {
+      name: "type",
+      type: "select",
+      required: true,
+      options: [
+        { label: "Invite", value: "invite" },
+        { label: "Activation", value: "activation" },
+        { label: "Password Reset", value: "reset" },
+      ],
+    },
+    { name: "tokenHash", type: "text", required: true, unique: true },
+    { name: "email", type: "email", required: true },
+    { name: "expiresAt", type: "date", includeTime: true, required: true },
+    { name: "usedAt", type: "date", includeTime: true },
+    { name: "metadata", type: "json" },
+    { name: "createdAt", type: "date", includeTime: true, required: true },
+  ],
+});
+
+const oryAuditLogs = defineOryCMSCollection({
+  name: "OryAuditLogs",
+  slug: "orycms-audit-logs",
+  tableName: "orycms_audit_logs",
+  labels: { singular: "Audit Log", plural: "Audit Logs" },
+  description: "Append-only record of privileged actions for security and compliance.",
+  fields: [
+    {
+      name: "userId",
+      type: "relation",
+      target: "orycms-users",
+      cardinality: "one",
+    },
+    { name: "action", type: "text", required: true },
+    { name: "resource", type: "text", required: true },
+    { name: "resourceId", type: "text" },
+    { name: "metadata", type: "json" },
+    { name: "ipAddress", type: "text" },
+    { name: "userAgent", type: "textarea" },
+    { name: "createdAt", type: "date", includeTime: true, required: true },
+  ],
+});
+
 const oryCollectionFields = defineOryCMSCollection({
   name: "OryCollectionFields",
   slug: "orycms-collection-fields",
@@ -211,6 +267,8 @@ const CORE_COLLECTIONS: OryCMSCollectionDefinition[] = [
   oryUsers,
   oryRolePermissions,
   orySessions,
+  oryTokens,
+  oryAuditLogs,
   oryCollectionFields,
 ];
 

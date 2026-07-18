@@ -14,7 +14,7 @@ export interface OryCMSCoreInstallResult {
 }
 
 /**
- * Generates PostgreSQL migration plans for all 9 core system tables.
+ * Generates PostgreSQL migration plans for all core system tables.
  * Migration IDs are stable (not timestamp-based) for idempotent tracking.
  * Plans are returned in FK-dependency order.
  */

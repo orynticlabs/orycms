@@ -1,26 +1,26 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { guardOryCMS, toErrorResponse, oryJsonError } from "@/lib/route-guards";
 
-// PATCH /api/orycms/seo/redirects/:id
-export async function PATCH(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  void params;
-  return NextResponse.json(
-    { success: false, error: { code: "NOT_IMPLEMENTED", message: "Not implemented" } },
-    { status: 501 },
-  );
+type RouteCtx = { params: Promise<{ id: string }> };
+
+// PATCH /api/orycms/seo/redirects/:id — update SEO redirect (guarded; impl pending)
+export async function PATCH(request: NextRequest, { params }: RouteCtx) {
+  try {
+    await guardOryCMS(request, "seo", "update");
+    await params;
+    return oryJsonError("NOT_IMPLEMENTED", "SEO redirects are not yet implemented.", 501);
+  } catch (err) {
+    return toErrorResponse(err);
+  }
 }
 
-// DELETE /api/orycms/seo/redirects/:id
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  void params;
-  return NextResponse.json(
-    { success: false, error: { code: "NOT_IMPLEMENTED", message: "Not implemented" } },
-    { status: 501 },
-  );
+// DELETE /api/orycms/seo/redirects/:id — delete SEO redirect (guarded; impl pending)
+export async function DELETE(request: NextRequest, { params }: RouteCtx) {
+  try {
+    await guardOryCMS(request, "seo", "delete");
+    await params;
+    return oryJsonError("NOT_IMPLEMENTED", "SEO redirects are not yet implemented.", 501);
+  } catch (err) {
+    return toErrorResponse(err);
+  }
 }

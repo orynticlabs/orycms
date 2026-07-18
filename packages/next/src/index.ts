@@ -64,8 +64,22 @@ export * from "./components/content/OryCMSContentTable";
 export * from "./components/content/OryCMSDynamicField";
 export * from "./components/media/OryCMSMediaLibrary";
 
+// ── Admin entry + auth pages ────────────────────────────────────────────────────
+export { OryCMSAdmin } from "./admin/OryCMSAdmin";
+export type { OryCMSAdminProps } from "./admin/OryCMSAdmin";
+export { OryCMSLoginPage } from "./admin/OryCMSLoginPage";
+export { OryCMSSetupPage } from "./admin/OryCMSSetupPage";
+
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 export { useIsMobile } from "./hooks/use-mobile";
+export {
+  OryCMSSessionProvider,
+  useOryCMSSession,
+  useOryCMSPermission,
+  hasOryCMSClientPermission,
+  Can,
+} from "./hooks/use-orycms-session";
+export type { OryCMSSessionState, OryCMSSessionUser } from "./hooks/use-orycms-session";
 
 // ── Utilities ──────────────────────────────────────────────────────────────────
 export { cn } from "./lib/utils";

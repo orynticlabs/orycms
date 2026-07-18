@@ -14,7 +14,9 @@ export type OryCMSResource =
   | "plugins"
   | "settings"
   | "migrations"
-  | "seo";
+  | "seo"
+  | "audit"
+  | "ai";
 
 export type OryCMSAction = "create" | "read" | "update" | "delete" | "publish" | "manage";
 
@@ -37,6 +39,8 @@ export const ORYCMS_DEFAULT_PERMISSIONS: PermMatrix = {
     settings: M,
     migrations: M,
     seo: M,
+    audit: M,
+    ai: M,
   },
   Admin: {
     collections: M,
@@ -48,6 +52,8 @@ export const ORYCMS_DEFAULT_PERMISSIONS: PermMatrix = {
     settings: M,
     migrations: M,
     seo: M,
+    audit: ["read"],
+    ai: M,
   },
   Editor: {
     collections: ["read"],
@@ -55,11 +61,13 @@ export const ORYCMS_DEFAULT_PERMISSIONS: PermMatrix = {
     media: CRUD,
     users: ["read"],
     seo: CRUD,
+    ai: ["read"],
   },
   Author: {
     collections: ["read"],
     content: ["create", "read", "update"],
     media: ["create", "read"],
+    ai: ["read"],
   },
   Viewer: {
     collections: ["read"],

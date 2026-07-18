@@ -1,10 +1,12 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { guardOryCMS, toErrorResponse, oryJsonError } from "@/lib/route-guards";
 
-// GET /api/orycms/orders
-export async function GET(_request: NextRequest) {
-  return NextResponse.json(
-    { success: false, error: { code: "NOT_IMPLEMENTED", message: "Not implemented" } },
-    { status: 501 },
-  );
+// GET /api/orycms/orders — list orders (guarded; impl pending)
+export async function GET(request: NextRequest) {
+  try {
+    await guardOryCMS(request, "collections", "read");
+    return oryJsonError("NOT_IMPLEMENTED", "Orders are not yet implemented.", 501);
+  } catch (err) {
+    return toErrorResponse(err);
+  }
 }

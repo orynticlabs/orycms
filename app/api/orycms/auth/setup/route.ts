@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import {
-  createOryCMSInitialOwner,
-  createOryCMSUserSession,
-  OryCMSAuthError,
-  SESSION_COOKIE,
-  SESSION_MAX_AGE,
-} from "@/auth";
+import { createOryCMSInitialOwner, OryCMSAuthError } from "@/auth";
+import { bootstrapOryCMS } from "@/core";
 import { getOryCMSPool } from "@/lib/db";
 
 // POST /api/orycms/auth/setup — create the first Owner account
@@ -26,23 +21,32 @@ export async function POST(request: NextRequest) {
     }
 
     const pool = getOryCMSPool();
-    const user = await createOryCMSInitialOwner(pool, { email, password });
-    const rawToken = await createOryCMSUserSession(pool, user.id);
 
-    const response = NextResponse.json(
+    // Install the core schema (11 tables) AND seed the default roles + permission
+    // matrix before creating the Owner, so a fresh database works end-to-end.
+    // bootstrapOryCMS is idempotent — safe to re-run.
+    const bootstrap = await bootstrapOryCMS(pool);
+    if (!bootstrap.install.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "SCHEMA_INSTALL_FAILED",
+            message:
+              "Could not install the OryCMS database schema. Check the database connection.",
+          },
+        },
+        { status: 500 },
+      );
+    }
+
+    const user = await createOryCMSInitialOwner(pool, { email, password });
+
+    // Account is provisioned; the user signs in on /login to mint a session.
+    return NextResponse.json(
       { success: true, data: { userId: user.id, email: user.email } },
       { status: 201 },
     );
-    response.cookies.set({
-      name: SESSION_COOKIE,
-      value: rawToken,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: SESSION_MAX_AGE,
-      path: "/",
-    });
-    return response;
   } catch (err) {
     if (err instanceof OryCMSAuthError) {
       return NextResponse.json(

@@ -8,6 +8,7 @@ export {
   authenticateOryCMSUser,
   createOryCMSUserSession,
   destroyOryCMSUserSession,
+  destroyOryCMSUserSessions,
   getOryCMSCurrentSession,
   protectOryCMSAdminRoute,
 } from "./auth";
