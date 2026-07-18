@@ -1,7 +1,7 @@
 {
   "name": "@ory-cms/core",
-  "version": "0.1.1",
-  "description": "OryCMS core runtime — auth, schema, content, plugins, hooks, and database adapters",
+  "version": "0.1.2",
+  "description": "OryCMS core first-run setup, authentication, and session runtime",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -37,10 +37,8 @@
     "cms",
     "headless-cms",
     "nextjs",
-    "content-management",
     "auth",
-    "rbac",
-    "schema"
+    "session"
   ],
   "author": "OrynticLabs <support@orynticlabs.com>",
   "license": "MIT",

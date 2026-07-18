@@ -43,7 +43,6 @@ describe("admin content routes", () => {
       path.join(nextRoot, "components/content/OryCMSCollectionContentPage.tsx"),
       path.join(nextRoot, "components/content/OryCMSContentForm.tsx"),
       path.join(nextRoot, "components/content/OryCMSContentTable.tsx"),
-      path.join(nextRoot, "components/dashboard/AppSidebar.tsx"),
     ];
 
     const source = files.map((file) => readFileSync(file, "utf8")).join("\n");
@@ -51,7 +50,6 @@ describe("admin content routes", () => {
     expect(source).toContain("adminContentListPath");
     expect(source).toContain("adminContentCreatePath");
     expect(source).toContain("adminContentEditPath");
-    expect(source).toContain("adminContentIndexPath");
     expect(source).not.toContain("router.push(`/collections/");
     expect(source).not.toContain('href="/collections/');
     expect(source).not.toContain("/content/new");

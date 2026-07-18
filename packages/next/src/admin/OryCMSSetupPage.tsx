@@ -12,7 +12,7 @@ const setupSignals = [
   {
     icon: UserPlus,
     title: "Owner account",
-    body: "The first account gets Owner-level access — full control over users, content, and settings.",
+    body: "The first account becomes the Owner of this OryCMS installation.",
   },
   {
     icon: Lock,
@@ -120,8 +120,7 @@ export function OryCMSSetupPage() {
               Create your Owner account to unlock OryCMS.
             </h1>
             <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
-              OryCMS requires one Owner account before it can be used. You can invite additional
-              operators from Settings later.
+              OryCMS requires one Owner account before the dashboard can be used.
             </p>
 
             <div className="mt-8 grid gap-3">
@@ -153,7 +152,7 @@ export function OryCMSSetupPage() {
             <span className="h-1 w-1 rounded-full bg-border-strong" />
             <span>Owner-level access</span>
             <span className="h-1 w-1 rounded-full bg-border-strong" />
-            <span>Invite users later from Settings</span>
+            <span>Dashboard access</span>
           </div>
         </div>
       </aside>

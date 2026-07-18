@@ -5,32 +5,18 @@ import { AppShell } from "@/components/dashboard/AppShell";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
 export interface OryCMSAdminProps {
-  /** Section label shown in the topbar (e.g. "Overview", "Collections"). */
+  /** Section label shown in the dashboard header. */
   section?: string;
   /**
    * Section content. When omitted, the built-in Overview dashboard is rendered.
-   * Consumers pass their own OryCMS feature component (e.g. OryCMSCollectionsAdminPage)
-   * or compose custom content per route.
+   * Consumers may compose custom dashboard content here.
    */
   children?: React.ReactNode;
 }
 
 /**
  * The OryCMS admin dashboard shell — sidebar, topbar, session provider, and a
- * content area. Mount it from a consumer route (e.g. `app/admin/[[...seg]]/page.tsx`
- * or per-section pages) and pass the section component as `children`:
- *
- *   import { OryCMSAdmin, OryCMSCollectionsAdminPage } from "@ory-cms/next";
- *   export default function Page() {
- *     return (
- *       <OryCMSAdmin section="Collections">
- *         <OryCMSCollectionsAdminPage />
- *       </OryCMSAdmin>
- *     );
- *   }
- *
- * All data flows through the `@ory-cms/core/next` API handlers via fetch — the
- * session provider inside AppShell reads `/api/orycms/auth/me` for nav gating.
+ * content area. Mount it from `app/admin/page.tsx`.
  */
 export function OryCMSAdmin({ section = "Overview", children }: OryCMSAdminProps) {
   return <AppShell section={section}>{children ?? <Dashboard />}</AppShell>;

@@ -13,9 +13,4 @@ export {
   protectOryCMSAdminRoute,
 } from "./auth";
 export type { OryCMSSetupInput, OryCMSAuthUser, OryCMSSessionData } from "./auth";
-export {
-  oryAppOrigin,
-  buildOryCMSTokenLink,
-  dispatchOryCMSTokenLink,
-} from "./token-links";
-export type { OryCMSTokenDispatchResult } from "./token-links";
+export { installOryCMSAuthSchema } from "./install";

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Pool } from "pg";
-import { clearOryCMSPermissionCache } from "@/rbac";
 
 // ── Mock the DB pool so handlers that call getOryCMSPool() hit our fake. ──────────
 // A per-test mutable query impl lets each test shape the rows it needs.
@@ -10,18 +9,6 @@ const poolQuery = vi.fn((sql: string, params?: unknown[]) => queryImpl(sql, para
 vi.mock("@/lib/db", () => ({
   getOryCMSPool: () => ({ query: poolQuery }) as unknown as Pool,
 }));
-
-// bootstrapOryCMS opens a real pg adapter — stub it so setup/migrations don't connect.
-vi.mock("@/core", async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return {
-    ...actual,
-    bootstrapOryCMS: vi.fn(async () => ({
-      install: { success: true, applied: [], skipped: [], failed: [] },
-      seeded: true,
-    })),
-  };
-});
 
 const { createOryCMSRouteHandlers } = await import("../dispatcher");
 const handlers = createOryCMSRouteHandlers();
@@ -40,21 +27,9 @@ function req(
   });
 }
 
-/** Rows an authenticated session + a fully-permissioned Owner role need. */
-function authAs(roleName: string, perms: Array<{ resource: string; action: string }>) {
-  queryImpl = (sql: string) => {
-    if (sql.includes("FROM orycms_sessions")) {
-      return { rows: [{ userId: "u1", email: "owner@acme.io", roleName }] };
-    }
-    if (sql.includes("FROM orycms_permissions")) return { rows: perms };
-    return { rows: [] };
-  };
-}
-
 beforeEach(() => {
   queryImpl = () => ({ rows: [] });
   poolQuery.mockClear();
-  clearOryCMSPermissionCache();
 });
 
 // ── Routing / matching ───────────────────────────────────────────────────────────
@@ -158,76 +133,10 @@ describe("guarded endpoints", () => {
     expect(res.status).toBe(401);
   });
 
-  it("GET /users returns 401 without a session", async () => {
-    const res = await handlers.GET(req("/api/orycms/users"));
-    expect(res.status).toBe(401);
-  });
-
-  it("GET /users returns 403 when the role lacks the permission", async () => {
-    authAs("Viewer", [{ resource: "content", action: "read" }]);
-    const res = await handlers.GET(req("/api/orycms/users", { cookie: "orycms_session=tok" }));
-    expect(res.status).toBe(403);
-  });
-
-  it("GET /users succeeds for a permitted role and extracts no params", async () => {
-    authAs("Owner", [{ resource: "users", action: "manage" }]);
-    const res = await handlers.GET(req("/api/orycms/users", { cookie: "orycms_session=tok" }));
-    expect(res.status).toBe(200);
-  });
-
-  it("GET /users/:id extracts the id param", async () => {
-    authAs("Owner", [{ resource: "users", action: "manage" }]);
-    queryImpl = (sql: string) => {
-      if (sql.includes("FROM orycms_sessions")) return { rows: [{ userId: "u1", email: "o@a.co", roleName: "Owner" }] };
-      if (sql.includes("FROM orycms_permissions")) return { rows: [{ resource: "users", action: "manage" }] };
-      if (sql.includes("FROM orycms_users")) return { rows: [{ id: "u42", email: "x@y.co", status: "active", roleId: null }] };
-      return { rows: [] };
-    };
-    const res = await handlers.GET(req("/api/orycms/users/u42", { cookie: "orycms_session=tok" }));
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { id: string } };
-    expect(body.data.id).toBe("u42");
-  });
-});
-
-// ── Route ordering: media/folders (literal) vs media/:id (param) ─────────────────
-
-describe("literal-vs-param ordering", () => {
-  it("GET /media/folders hits the folders handler, not media/:id", async () => {
-    authAs("Owner", [{ resource: "media", action: "manage" }]);
-    // media/folders lists folders (data is an array); media/:id would call getOryCMSMedia(id).
-    const res = await handlers.GET(req("/api/orycms/media/folders", { cookie: "orycms_session=tok" }));
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { success: boolean; data: unknown };
-    expect(Array.isArray(body.data)).toBe(true); // folder list, not a single asset
-  });
-});
-
-// ── 501 stubs still enforce auth first ───────────────────────────────────────────
-
-describe("501 stubs", () => {
-  it("GET /plugins returns 401 without a session (guard runs before 501)", async () => {
-    const res = await handlers.GET(req("/api/orycms/plugins"));
-    expect(res.status).toBe(401);
-  });
-
-  it("GET /plugins returns 501 for a permitted role", async () => {
-    authAs("Owner", [{ resource: "plugins", action: "manage" }]);
-    const res = await handlers.GET(req("/api/orycms/plugins", { cookie: "orycms_session=tok" }));
-    expect(res.status).toBe(501);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("NOT_IMPLEMENTED");
-  });
-
-  it("PUT /roles/:id/permissions is routable (the only PUT)", async () => {
-    authAs("Owner", [{ resource: "roles", action: "manage" }]);
-    const res = await handlers.PUT(
-      req("/api/orycms/roles/r1/permissions", {
-        method: "PUT",
-        cookie: "orycms_session=tok",
-        body: { permissionIds: [] },
-      }),
-    );
-    expect(res.status).toBe(200);
+  it("does not ship advanced module routes", async () => {
+    for (const path of ["users", "media/folders", "plugins", "collections", "seo"]) {
+      const res = await handlers.GET(req(`/api/orycms/${path}`));
+      expect(res.status).toBe(404);
+    }
   });
 });
