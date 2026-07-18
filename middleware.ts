@@ -4,7 +4,14 @@ import type { NextRequest } from "next/server";
 // ── Public surfaces ─────────────────────────────────────────────────────────
 
 /** Page routes that never require a session. */
-const PUBLIC_PAGES = new Set(["/login", "/setup"]);
+const PUBLIC_PAGES = new Set([
+  "/login",
+  "/setup",
+  "/accept-invite",
+  "/activate",
+  "/reset-password",
+  "/forgot-password",
+]);
 
 /** All auth API routes are public. */
 const PUBLIC_API_PREFIX = "/api/orycms/auth/";

@@ -19,6 +19,7 @@ export type {
   OryCMSConfigModule,
   OryCMSDatabaseConfig,
   OryCMSEmailConfig,
+  OryCMSEmailProviderId,
   OryCMSHooksConfig,
   OryCMSLoadConfigOptions,
   OryCMSLocalizationConfig,

@@ -40,9 +40,26 @@ export type OryCMSHooksConfig = {
   timeoutMs?: number;
 };
 
+export type OryCMSEmailProviderId =
+  | "resend"
+  | "smtp"
+  | "sendgrid"
+  | "ses"
+  | "mailgun"
+  | "postmark"
+  | "custom";
+
 export type OryCMSEmailConfig = {
-  provider?: "smtp" | "custom";
+  /**
+   * Which provider to send through. When omitted (and no ORYCMS_EMAIL_PROVIDER
+   * env var is set), OryCMS runs in dev mode: token links are returned in the
+   * API response instead of being emailed.
+   */
+  provider?: OryCMSEmailProviderId;
+  /** Default From address, e.g. "OryCMS <no-reply@example.com>". */
   from?: string;
+  /** Provider-specific options (API keys, SMTP host, region, …). Env vars win. */
+  options?: Record<string, unknown>;
 };
 
 export type OryCMSAIConfig = {

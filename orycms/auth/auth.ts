@@ -174,6 +174,14 @@ export async function destroyOryCMSUserSession(pool: Pool, rawToken: string): Pr
 }
 
 /**
+ * Deletes ALL sessions for a user. Called after a password reset so any
+ * previously issued (possibly stolen) session tokens are immediately revoked.
+ */
+export async function destroyOryCMSUserSessions(pool: Pool, userId: string): Promise<void> {
+  await pool.query(`DELETE FROM orycms_sessions WHERE "userId" = $1`, [userId]);
+}
+
+/**
  * Looks up a valid, non-expired session by raw token.
  * Returns session data (userId, email, roleName) or null if not found / expired.
  */

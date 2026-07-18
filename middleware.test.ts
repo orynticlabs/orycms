@@ -49,6 +49,12 @@ describe("public pages", () => {
   it("passes /setup without session", () => {
     expect(middleware(req("/setup")).status).toBe(200);
   });
+
+  it("passes token-flow pages without session", () => {
+    for (const path of ["/accept-invite", "/activate", "/reset-password", "/forgot-password"]) {
+      expect(middleware(req(path)).status, path).toBe(200);
+    }
+  });
 });
 
 // ── Public content GET endpoints ───────────────────────────────────────────────

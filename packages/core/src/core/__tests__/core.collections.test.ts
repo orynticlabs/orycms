@@ -6,8 +6,8 @@ describe("getOryCMSCoreCollections", () => {
 
   // ── count and identity ─────────────────────────────────────────────────────
 
-  it("returns exactly 9 core collections", () => {
-    expect(collections).toHaveLength(9);
+  it("returns exactly 11 core collections", () => {
+    expect(collections).toHaveLength(11);
   });
 
   it("slugs match the expected set in dependency order", () => {
@@ -20,6 +20,8 @@ describe("getOryCMSCoreCollections", () => {
       "orycms-users",
       "orycms-role-permissions",
       "orycms-sessions",
+      "orycms-tokens",
+      "orycms-audit-logs",
       "orycms-collection-fields",
     ]);
   });
@@ -216,6 +218,67 @@ describe("getOryCMSCoreCollections", () => {
 
     it("has expiresAt as required date-with-time field", () => {
       const f = field("orycms-sessions", "expiresAt");
+      expect(f.type).toBe("date");
+      expect(f.required).toBe(true);
+      if (f.type === "date") expect(f.includeTime).toBe(true);
+    });
+  });
+
+  // ── orycms-tokens ─────────────────────────────────────────────────────────
+
+  describe("orycms-tokens", () => {
+    it("has userId as cascade-delete relation to orycms-users", () => {
+      const f = field("orycms-tokens", "userId");
+      expect(f.type).toBe("relation");
+      if (f.type === "relation") {
+        expect(f.target).toBe("orycms-users");
+        expect(f.cascadeDelete).toBe(true);
+      }
+    });
+
+    it("has type select with invite/activation/reset options", () => {
+      const f = field("orycms-tokens", "type");
+      expect(f.type).toBe("select");
+      expect(f.required).toBe(true);
+      if (f.type === "select") {
+        const values = f.options.map((o) => o.value);
+        expect(values).toContain("invite");
+        expect(values).toContain("activation");
+        expect(values).toContain("reset");
+      }
+    });
+
+    it("has tokenHash as required unique text field", () => {
+      const f = field("orycms-tokens", "tokenHash");
+      expect(f.type).toBe("text");
+      expect(f.required).toBe(true);
+      expect(f.unique).toBe(true);
+    });
+
+    it("has expiresAt as required date-with-time field", () => {
+      const f = field("orycms-tokens", "expiresAt");
+      expect(f.type).toBe("date");
+      expect(f.required).toBe(true);
+      if (f.type === "date") expect(f.includeTime).toBe(true);
+    });
+  });
+
+  // ── orycms-audit-logs ─────────────────────────────────────────────────────
+
+  describe("orycms-audit-logs", () => {
+    it("has action and resource as required text fields", () => {
+      expect(field("orycms-audit-logs", "action").required).toBe(true);
+      expect(field("orycms-audit-logs", "resource").required).toBe(true);
+    });
+
+    it("has userId as a (nullable) relation to orycms-users", () => {
+      const f = field("orycms-audit-logs", "userId");
+      expect(f.type).toBe("relation");
+      if (f.type === "relation") expect(f.target).toBe("orycms-users");
+    });
+
+    it("has createdAt as required date-with-time field", () => {
+      const f = field("orycms-audit-logs", "createdAt");
       expect(f.type).toBe("date");
       expect(f.required).toBe(true);
       if (f.type === "date") expect(f.includeTime).toBe(true);

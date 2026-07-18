@@ -1,18 +1,22 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { guardOryCMS, toErrorResponse, oryJsonError } from "@/lib/route-guards";
 
-// GET /api/orycms/products
-export async function GET(_request: NextRequest) {
-  return NextResponse.json(
-    { success: false, error: { code: "NOT_IMPLEMENTED", message: "Not implemented" } },
-    { status: 501 },
-  );
+// GET /api/orycms/products — list products (guarded; impl pending)
+export async function GET(request: NextRequest) {
+  try {
+    await guardOryCMS(request, "collections", "read");
+    return oryJsonError("NOT_IMPLEMENTED", "Product catalog is not yet implemented.", 501);
+  } catch (err) {
+    return toErrorResponse(err);
+  }
 }
 
-// POST /api/orycms/products
-export async function POST(_request: NextRequest) {
-  return NextResponse.json(
-    { success: false, error: { code: "NOT_IMPLEMENTED", message: "Not implemented" } },
-    { status: 501 },
-  );
+// POST /api/orycms/products — create product (guarded; impl pending)
+export async function POST(request: NextRequest) {
+  try {
+    await guardOryCMS(request, "collections", "create");
+    return oryJsonError("NOT_IMPLEMENTED", "Product catalog is not yet implemented.", 501);
+  } catch (err) {
+    return toErrorResponse(err);
+  }
 }

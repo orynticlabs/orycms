@@ -26,8 +26,8 @@ const setupSignals = [
   },
   {
     icon: CheckCircle2,
-    title: "Instant access",
-    body: "Setup signs you in immediately — no email confirmation required to get started.",
+    title: "Sign in to continue",
+    body: "Once your Owner account is created, sign in on the login screen to start your session.",
   },
 ];
 
@@ -70,7 +70,8 @@ export default function SetupPage() {
         setIsSubmitting(false);
         return;
       }
-      router.push("/");
+      // Account provisioned — sign in on /login to start a session.
+      router.replace("/login");
     } catch {
       setError("Network error. Please try again.");
       setIsSubmitting(false);

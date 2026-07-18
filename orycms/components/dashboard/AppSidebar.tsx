@@ -29,11 +29,16 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { adminCollectionsPath } from "@/admin";
 import { adminContentIndexPath } from "@/admin";
+import { useOryCMSSession, hasOryCMSClientPermission } from "@/hooks";
+
+/** A permission requirement for showing a nav entry. */
+type NavPermission = { resource: string; action: string };
 
 type ChildItem = {
   label: string;
   to: string;
   icon?: React.ComponentType<{ className?: string }>;
+  permission?: NavPermission;
 };
 
 type Item = {
@@ -42,6 +47,7 @@ type Item = {
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
   children?: ChildItem[];
+  permission?: NavPermission;
 };
 
 const NAV: { section: string; items: Item[] }[] = [
@@ -56,28 +62,28 @@ const NAV: { section: string; items: Item[] }[] = [
         label: "Commerce",
         icon: ShoppingBag,
         children: [
-          { label: "Products", to: "/products", icon: Package },
-          { label: "Categories", to: "/categories", icon: Tags },
-          { label: "Inventory", to: "/inventory", icon: Boxes },
+          { label: "Products", to: "/products", icon: Package, permission: { resource: "collections", action: "read" } },
+          { label: "Categories", to: "/categories", icon: Tags, permission: { resource: "collections", action: "read" } },
+          { label: "Inventory", to: "/inventory", icon: Boxes, permission: { resource: "collections", action: "read" } },
         ],
       },
-      { label: "Orders", to: "/orders", icon: Receipt, badge: "12" },
-      { label: "Customers", to: "/customers", icon: Users },
+      { label: "Orders", to: "/orders", icon: Receipt, badge: "12", permission: { resource: "collections", action: "read" } },
+      { label: "Customers", to: "/customers", icon: Users, permission: { resource: "collections", action: "read" } },
     ],
   },
   {
     section: "Content",
     items: [
-      { label: "Collections", to: adminCollectionsPath(), icon: Layers },
-      { label: "Content", to: adminContentIndexPath(), icon: FileText },
-      { label: "Media", to: "/media", icon: ImageIcon },
+      { label: "Collections", to: adminCollectionsPath(), icon: Layers, permission: { resource: "collections", action: "read" } },
+      { label: "Content", to: adminContentIndexPath(), icon: FileText, permission: { resource: "content", action: "read" } },
+      { label: "Media", to: "/media", icon: ImageIcon, permission: { resource: "media", action: "read" } },
     ],
   },
   {
     section: "Identity",
     items: [
-      { label: "Users", to: "/users", icon: UserCog },
-      { label: "Roles", to: "/roles", icon: Shield },
+      { label: "Users", to: "/users", icon: UserCog, permission: { resource: "users", action: "read" } },
+      { label: "Roles", to: "/roles", icon: Shield, permission: { resource: "roles", action: "read" } },
     ],
   },
   {
@@ -90,20 +96,47 @@ const NAV: { section: string; items: Item[] }[] = [
   {
     section: "Platform",
     items: [
-      { label: "Plugins", to: "/plugins", icon: Puzzle },
-      { label: "Database", to: "/database", icon: Database },
-      { label: "SEO", to: "/seo", icon: SearchCheck },
+      { label: "Plugins", to: "/plugins", icon: Puzzle, permission: { resource: "plugins", action: "read" } },
+      { label: "Database", to: "/database", icon: Database, permission: { resource: "migrations", action: "read" } },
+      { label: "SEO", to: "/seo", icon: SearchCheck, permission: { resource: "seo", action: "read" } },
     ],
   },
   {
     section: "System",
-    items: [{ label: "Settings", to: "/settings", icon: Settings }],
+    items: [{ label: "Settings", to: "/settings", icon: Settings, permission: { resource: "settings", action: "read" } }],
   },
 ];
 
 export function AppSidebar({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState<Record<string, boolean>>({ Commerce: true });
+  const { permissions, loaded } = useOryCMSSession();
+
+  // Gate a nav entry by its permission. Entries with no `permission` are always
+  // shown. Permission-gated entries appear only once the session has loaded AND
+  // the role is allowed (fail-closed during load). Enforcement is on the backend;
+  // this only controls visibility.
+  const allow = (perm?: NavPermission): boolean => {
+    if (!perm) return true;
+    if (!loaded) return false;
+    return hasOryCMSClientPermission(permissions, perm.resource, perm.action);
+  };
+
+  const visibleNav = NAV.map((group) => {
+    const items = group.items
+      .map((item) => {
+        if (item.children) {
+          const children = item.children.filter((c) => allow(c.permission));
+          // A parent with children is shown only if at least one child survives,
+          // unless it also has its own direct link + permission.
+          if (children.length === 0 && !item.to) return null;
+          return { ...item, children };
+        }
+        return allow(item.permission) ? item : null;
+      })
+      .filter((i): i is Item => i !== null);
+    return { ...group, items };
+  }).filter((group) => group.items.length > 0);
 
   return (
     <aside
@@ -134,7 +167,7 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-5">
-        {NAV.map((group) => (
+        {visibleNav.map((group) => (
           <div key={group.section}>
             {!collapsed && (
               <div className="px-2 pb-1.5 text-[10.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground/80">

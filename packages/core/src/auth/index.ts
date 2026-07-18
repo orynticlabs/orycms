@@ -8,7 +8,14 @@ export {
   authenticateOryCMSUser,
   createOryCMSUserSession,
   destroyOryCMSUserSession,
+  destroyOryCMSUserSessions,
   getOryCMSCurrentSession,
   protectOryCMSAdminRoute,
 } from "./auth";
 export type { OryCMSSetupInput, OryCMSAuthUser, OryCMSSessionData } from "./auth";
+export {
+  oryAppOrigin,
+  buildOryCMSTokenLink,
+  dispatchOryCMSTokenLink,
+} from "./token-links";
+export type { OryCMSTokenDispatchResult } from "./token-links";

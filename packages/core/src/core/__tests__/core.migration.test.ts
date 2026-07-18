@@ -6,8 +6,8 @@ import type { OryCMSDatabaseAdapter, OryCMSMigrationResult } from "@/database";
 // ── generateOryCMSCoreMigrationPlan ───────────────────────────────────────────
 
 describe("generateOryCMSCoreMigrationPlan", () => {
-  it("returns exactly 9 migration plans", () => {
-    expect(generateOryCMSCoreMigrationPlan()).toHaveLength(9);
+  it("returns exactly 11 migration plans", () => {
+    expect(generateOryCMSCoreMigrationPlan()).toHaveLength(11);
   });
 
   it("migration IDs are stable across multiple calls", () => {
@@ -166,21 +166,21 @@ describe("installOryCMSCoreSchema", () => {
       expect(result.success).toBe(true);
     });
 
-    it("applies all 9 migrations", async () => {
+    it("applies all 11 migrations", async () => {
       const result = await installOryCMSCoreSchema(adapter);
-      expect(result.applied).toHaveLength(9);
+      expect(result.applied).toHaveLength(11);
       expect(result.skipped).toHaveLength(0);
       expect(result.failed).toHaveLength(0);
     });
 
-    it("runs runMigration exactly 9 times", async () => {
+    it("runs runMigration exactly 11 times", async () => {
       await installOryCMSCoreSchema(adapter);
-      expect(adapter.runMigration).toHaveBeenCalledTimes(9);
+      expect(adapter.runMigration).toHaveBeenCalledTimes(11);
     });
 
     it("records each migration in orycms_migrations via createRecord", async () => {
       await installOryCMSCoreSchema(adapter);
-      expect(adapter.createRecord).toHaveBeenCalledTimes(9);
+      expect(adapter.createRecord).toHaveBeenCalledTimes(11);
       expect(adapter.createRecord).toHaveBeenCalledWith(
         "orycms_migrations",
         expect.objectContaining({ migrationId: "orycms_core_orycms_migrations" }),
@@ -196,7 +196,7 @@ describe("installOryCMSCoreSchema", () => {
   });
 
   describe("second install (all already applied)", () => {
-    it("skips all 9 migrations and runs nothing", async () => {
+    it("skips all 11 migrations and runs nothing", async () => {
       const plans = generateOryCMSCoreMigrationPlan();
       const alreadyApplied = plans.map((p) => ({ migrationId: p.migrationId }));
       const adapter = makeMockAdapter(alreadyApplied);
@@ -205,7 +205,7 @@ describe("installOryCMSCoreSchema", () => {
 
       expect(result.success).toBe(true);
       expect(result.applied).toHaveLength(0);
-      expect(result.skipped).toHaveLength(9);
+      expect(result.skipped).toHaveLength(11);
       expect(result.failed).toHaveLength(0);
       expect(adapter.runMigration).not.toHaveBeenCalled();
     });
@@ -222,8 +222,8 @@ describe("installOryCMSCoreSchema", () => {
 
       expect(result.success).toBe(true);
       expect(result.skipped).toHaveLength(5);
-      expect(result.applied).toHaveLength(4);
-      expect(adapter.runMigration).toHaveBeenCalledTimes(4);
+      expect(result.applied).toHaveLength(6);
+      expect(adapter.runMigration).toHaveBeenCalledTimes(6);
     });
   });
 
@@ -233,7 +233,7 @@ describe("installOryCMSCoreSchema", () => {
       const result = await installOryCMSCoreSchema(adapter);
 
       expect(result.success).toBe(false);
-      expect(result.failed).toHaveLength(9);
+      expect(result.failed).toHaveLength(11);
       expect(result.failed[0].error).toBe("simulated failure");
     });
   });
@@ -248,7 +248,7 @@ describe("installOryCMSCoreSchema", () => {
       const result = await installOryCMSCoreSchema(adapter);
 
       expect(result.success).toBe(true);
-      expect(result.applied).toHaveLength(9);
+      expect(result.applied).toHaveLength(11);
     });
   });
 });

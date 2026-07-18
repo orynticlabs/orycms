@@ -1,14 +1,15 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { guardOryCMS, toErrorResponse, oryJsonError } from "@/lib/route-guards";
 
-// DELETE /api/orycms/settings/api-keys/:id — revoke an API key
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  void params;
-  return NextResponse.json(
-    { success: false, error: { code: "NOT_IMPLEMENTED", message: "Not implemented" } },
-    { status: 501 },
-  );
+type RouteCtx = { params: Promise<{ id: string }> };
+
+// DELETE /api/orycms/settings/api-keys/:id — revoke an API key (guarded; impl pending)
+export async function DELETE(request: NextRequest, { params }: RouteCtx) {
+  try {
+    await guardOryCMS(request, "settings", "delete");
+    await params;
+    return oryJsonError("NOT_IMPLEMENTED", "API keys are not yet implemented.", 501);
+  } catch (err) {
+    return toErrorResponse(err);
+  }
 }
