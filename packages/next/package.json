@@ -1,6 +1,6 @@
 {
   "name": "@ory-cms/next",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "OryCMS Next.js first-run setup, login, and admin dashboard",
   "type": "module",
   "main": "./dist/index.js",
