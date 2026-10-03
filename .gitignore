@@ -31,3 +31,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# AI tool directories
+.claude
+.codex
+
+# AI tool / integration configs that may carry credentials
+.mcp.json
+.reticle.json
+
+# Environment files — never commit real secrets, example files are fine
+.env
+.env.*
+!.env.example
