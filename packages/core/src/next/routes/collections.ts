@@ -1,4 +1,4 @@
-import { protectOryCMSAdminRoute } from "@/auth";
+import { OryCMSAuthError, protectOryCMSAdminRoute } from "@/auth";
 import {
   loadOryCMSPersistedCollectionsOnStartup,
   listOryCMSCollections,
@@ -35,9 +35,17 @@ import { jsonOk, jsonRaw, jsonError, readJsonBody } from "../http";
 const listCollections: OryCMSRoute = {
   method: "GET",
   pattern: "collections",
-  handler: async () => {
-    await loadOryCMSPersistedCollectionsOnStartup();
-    return jsonOk(listOryCMSCollections());
+  handler: async ({ request }) => {
+    try {
+      const session = await protectOryCMSAdminRoute(request);
+      await requireOryCMSPermission(session, "collections", "read");
+      await loadOryCMSPersistedCollectionsOnStartup();
+      return jsonOk(listOryCMSCollections());
+    } catch (error) {
+      if (error instanceof OryCMSAuthError)
+        return jsonError(error.code, error.message, error.statusCode);
+      throw error;
+    }
   },
 };
 

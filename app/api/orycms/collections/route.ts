@@ -11,10 +11,26 @@ import type { OryCMSCollectionDefinition } from "@/schema";
 import { requireOryCMSPermission } from "@/rbac";
 
 // GET /api/orycms/collections — list all registered collection schemas
-export async function GET(_request: NextRequest) {
-  await loadOryCMSPersistedCollectionsOnStartup();
-  const collections = listOryCMSCollections();
-  return NextResponse.json({ success: true, data: collections });
+export async function GET(request: NextRequest) {
+  try {
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "collections", "read");
+
+    await loadOryCMSPersistedCollectionsOnStartup();
+    const collections = listOryCMSCollections();
+    return NextResponse.json({ success: true, data: collections });
+  } catch (err) {
+    if (err instanceof OryCMSAuthError) {
+      return NextResponse.json(
+        { success: false, error: { code: err.code, message: err.message } },
+        { status: err.statusCode },
+      );
+    }
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Could not list schemas." } },
+      { status: 500 },
+    );
+  }
 }
 
 // POST /api/orycms/collections — persist a new collection schema

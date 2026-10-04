@@ -3,7 +3,7 @@ import type { OryCMSContentData } from "@/types";
 import { OryCMSContentError } from "./content.errors";
 
 /** System fields injected by the engine — never treated as user-defined fields. */
-const SYSTEM_FIELDS = new Set([
+export const SYSTEM_FIELDS = new Set([
   "id",
   "createdAt",
   "updatedAt",
@@ -13,6 +13,80 @@ const SYSTEM_FIELDS = new Set([
   "_seoDescription",
   "_seoImage",
 ]);
+
+/** The only filter operators the query layer knows how to translate to SQL. */
+export const VALID_QUERY_OPERATORS = new Set([
+  "eq",
+  "ne",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "in",
+  "nin",
+  "contains",
+  "startsWith",
+  "endsWith",
+]);
+
+/** True if `field` is a real column on this collection's table (declared field or system column). */
+function isKnownQueryField(collection: OryCMSCollectionDefinition, field: string): boolean {
+  return SYSTEM_FIELDS.has(field) || collection.fields.some((f) => f.name === field);
+}
+
+/**
+ * Validates a single filter entry before it is turned into SQL.
+ * Throws OryCMSContentError (400) if the field isn't a real column on this
+ * collection, or the operator isn't one of the fixed set the engine supports.
+ */
+export function validateOryCMSQueryFilter(
+  collection: OryCMSCollectionDefinition,
+  filter: { field: string; operator: string },
+): void {
+  if (!isKnownQueryField(collection, filter.field)) {
+    throw new OryCMSContentError(
+      "FIELD_UNKNOWN",
+      `Unknown field "${filter.field}" in collection "${collection.slug}".`,
+      400,
+      filter.field,
+    );
+  }
+  if (!VALID_QUERY_OPERATORS.has(filter.operator)) {
+    throw new OryCMSContentError(
+      "OPERATOR_INVALID",
+      `Unsupported filter operator "${filter.operator}".`,
+      400,
+      filter.field,
+    );
+  }
+}
+
+/**
+ * Validates a single sort entry before it is turned into SQL.
+ * Throws OryCMSContentError (400) if the field isn't a real column on this
+ * collection, or the direction isn't "asc"/"desc".
+ */
+export function validateOryCMSSortField(
+  collection: OryCMSCollectionDefinition,
+  sort: { field: string; direction: string },
+): void {
+  if (!isKnownQueryField(collection, sort.field)) {
+    throw new OryCMSContentError(
+      "FIELD_UNKNOWN",
+      `Unknown field "${sort.field}" in collection "${collection.slug}".`,
+      400,
+      sort.field,
+    );
+  }
+  if (sort.direction !== "asc" && sort.direction !== "desc") {
+    throw new OryCMSContentError(
+      "OPERATOR_INVALID",
+      `Unsupported sort direction "${sort.direction}".`,
+      400,
+      sort.field,
+    );
+  }
+}
 
 /**
  * Validates content data against the collection schema.

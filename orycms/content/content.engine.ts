@@ -5,7 +5,12 @@ import type { OryCMSContentData, OryCMSContentEntry, OryCMSContentStatus } from 
 import type { OryCMSDatabaseQueryFilter, OryCMSDatabaseSortOptions } from "@/database";
 import { getOryCMSPool } from "@/lib/db";
 import { OryCMSContentError } from "./content.errors";
-import { validateOryCMSContentData, stripOryCMSPrivateFields } from "./content.validator";
+import {
+  validateOryCMSContentData,
+  stripOryCMSPrivateFields,
+  validateOryCMSQueryFilter,
+  validateOryCMSSortField,
+} from "./content.validator";
 import { buildOryCMSHookContext, runOryCMSBeforeHooks, runOryCMSAfterHooks } from "@/hooks";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -82,7 +87,14 @@ function filterToSQL(
     case "endsWith":
       return { clause: `${col} ILIKE $${idx}`, value: `%${f.value}` };
     default:
-      return { clause: `${col} = $${idx}`, value: f.value };
+      // Unreachable once callers validate against VALID_QUERY_OPERATORS first —
+      // fail loudly instead of silently treating an unknown operator as "eq".
+      throw new OryCMSContentError(
+        "OPERATOR_INVALID",
+        `Unsupported filter operator "${f.operator}".`,
+        400,
+        f.field,
+      );
   }
 }
 
@@ -124,6 +136,11 @@ export async function listOryCMSContentEntries(
   const col = resolveCollection(collectionSlug);
   const table = deriveTable(col);
   const { filters = [], sort = [], page = 1, limit = 50, includeDrafts = false } = options;
+
+  // Reject any filter/sort field that isn't a real column on this collection,
+  // and any operator/direction outside the fixed allowlist, before building SQL.
+  for (const f of filters) validateOryCMSQueryFilter(col, f);
+  for (const s of sort) validateOryCMSSortField(col, s);
 
   const values: unknown[] = [];
   const whereParts: string[] = [];

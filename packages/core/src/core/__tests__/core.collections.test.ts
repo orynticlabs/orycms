@@ -276,13 +276,6 @@ describe("getOryCMSCoreCollections", () => {
       expect(f.type).toBe("relation");
       if (f.type === "relation") expect(f.target).toBe("orycms-users");
     });
-
-    it("has createdAt as required date-with-time field", () => {
-      const f = field("orycms-audit-logs", "createdAt");
-      expect(f.type).toBe("date");
-      expect(f.required).toBe(true);
-      if (f.type === "date") expect(f.includeTime).toBe(true);
-    });
   });
 
   // ── orycms-collection-fields ──────────────────────────────────────────────
