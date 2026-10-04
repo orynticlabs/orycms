@@ -53,7 +53,7 @@ type Item = {
 const NAV: { section: string; items: Item[] }[] = [
   {
     section: "Workspace",
-    items: [{ label: "Overview", to: "/", icon: LayoutDashboard }],
+    items: [{ label: "Overview", to: "/admin", icon: LayoutDashboard }],
   },
   {
     section: "Commerce",
@@ -62,48 +62,121 @@ const NAV: { section: string; items: Item[] }[] = [
         label: "Commerce",
         icon: ShoppingBag,
         children: [
-          { label: "Products", to: "/products", icon: Package, permission: { resource: "collections", action: "read" } },
-          { label: "Categories", to: "/categories", icon: Tags, permission: { resource: "collections", action: "read" } },
-          { label: "Inventory", to: "/inventory", icon: Boxes, permission: { resource: "collections", action: "read" } },
+          {
+            label: "Products",
+            to: "/admin/products",
+            icon: Package,
+            permission: { resource: "collections", action: "read" },
+          },
+          {
+            label: "Categories",
+            to: "/admin/categories",
+            icon: Tags,
+            permission: { resource: "collections", action: "read" },
+          },
+          {
+            label: "Inventory",
+            to: "/admin/inventory",
+            icon: Boxes,
+            permission: { resource: "collections", action: "read" },
+          },
         ],
       },
-      { label: "Orders", to: "/orders", icon: Receipt, badge: "12", permission: { resource: "collections", action: "read" } },
-      { label: "Customers", to: "/customers", icon: Users, permission: { resource: "collections", action: "read" } },
+      {
+        label: "Orders",
+        to: "/admin/orders",
+        icon: Receipt,
+        badge: "12",
+        permission: { resource: "collections", action: "read" },
+      },
+      {
+        label: "Customers",
+        to: "/admin/customers",
+        icon: Users,
+        permission: { resource: "collections", action: "read" },
+      },
     ],
   },
   {
     section: "Content",
     items: [
-      { label: "Collections", to: adminCollectionsPath(), icon: Layers, permission: { resource: "collections", action: "read" } },
-      { label: "Content", to: adminContentIndexPath(), icon: FileText, permission: { resource: "content", action: "read" } },
-      { label: "Media", to: "/media", icon: ImageIcon, permission: { resource: "media", action: "read" } },
+      {
+        label: "Collections",
+        to: adminCollectionsPath(),
+        icon: Layers,
+        permission: { resource: "collections", action: "read" },
+      },
+      {
+        label: "Content",
+        to: adminContentIndexPath(),
+        icon: FileText,
+        permission: { resource: "content", action: "read" },
+      },
+      {
+        label: "Media",
+        to: "/admin/media",
+        icon: ImageIcon,
+        permission: { resource: "media", action: "read" },
+      },
     ],
   },
   {
     section: "Identity",
     items: [
-      { label: "Users", to: "/users", icon: UserCog, permission: { resource: "users", action: "read" } },
-      { label: "Roles", to: "/roles", icon: Shield, permission: { resource: "roles", action: "read" } },
+      {
+        label: "Users",
+        to: "/admin/users",
+        icon: UserCog,
+        permission: { resource: "users", action: "read" },
+      },
+      {
+        label: "Roles",
+        to: "/admin/roles",
+        icon: Shield,
+        permission: { resource: "roles", action: "read" },
+      },
     ],
   },
   {
     section: "Growth",
     items: [
-      { label: "Marketing", to: "/marketing", icon: Megaphone },
-      { label: "Analytics", to: "/analytics", icon: LineChart },
+      { label: "Marketing", to: "/admin/marketing", icon: Megaphone },
+      { label: "Analytics", to: "/admin/analytics", icon: LineChart },
     ],
   },
   {
     section: "Platform",
     items: [
-      { label: "Plugins", to: "/plugins", icon: Puzzle, permission: { resource: "plugins", action: "read" } },
-      { label: "Database", to: "/database", icon: Database, permission: { resource: "migrations", action: "read" } },
-      { label: "SEO", to: "/seo", icon: SearchCheck, permission: { resource: "seo", action: "read" } },
+      {
+        label: "Plugins",
+        to: "/admin/plugins",
+        icon: Puzzle,
+        permission: { resource: "plugins", action: "read" },
+      },
+      {
+        label: "Database",
+        to: "/admin/database",
+        icon: Database,
+        permission: { resource: "migrations", action: "read" },
+      },
+      {
+        label: "SEO",
+        to: "/admin/seo",
+        icon: SearchCheck,
+        permission: { resource: "seo", action: "read" },
+      },
     ],
   },
   {
     section: "System",
-    items: [{ label: "Settings", to: "/settings", icon: Settings, permission: { resource: "settings", action: "read" } }],
+    items: [
+      {
+        label: "Settings",
+        to: "/admin/settings",
+        icon: Settings,
+        permission: { resource: "settings", action: "read" },
+      },
+    ],
   },
 ];
 
@@ -177,7 +250,8 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const active =
-                  item.to && (item.to === "/" ? pathname === "/" : pathname.startsWith(item.to));
+                  item.to &&
+                  (item.to === "/admin" ? pathname === "/admin" : pathname.startsWith(item.to));
                 const hasKids = !!item.children?.length;
                 const isOpen = open[item.label];
                 const Icon = item.icon;

@@ -1,12 +1,5 @@
-"use client";
-
-import { AppShell } from "@/components/dashboard/AppShell";
-import { Dashboard } from "@/components/dashboard/Dashboard";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <AppShell section="Overview">
-      <Dashboard />
-    </AppShell>
-  );
+  redirect("/admin");
 }

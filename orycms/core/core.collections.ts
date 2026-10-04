@@ -188,7 +188,6 @@ const oryTokens = defineOryCMSCollection({
     { name: "expiresAt", type: "date", includeTime: true, required: true },
     { name: "usedAt", type: "date", includeTime: true },
     { name: "metadata", type: "json" },
-    { name: "createdAt", type: "date", includeTime: true, required: true },
   ],
 });
 
@@ -211,7 +210,6 @@ const oryAuditLogs = defineOryCMSCollection({
     { name: "metadata", type: "json" },
     { name: "ipAddress", type: "text" },
     { name: "userAgent", type: "textarea" },
-    { name: "createdAt", type: "date", includeTime: true, required: true },
   ],
 });
 

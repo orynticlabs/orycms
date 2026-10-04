@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { OryCMSContentTable } from "./OryCMSContentTable";
 import { OryCMSContentForm } from "./OryCMSContentForm";
-import { adminContentListPath } from "@/admin";
+import { adminCollectionsPath, adminContentListPath } from "@/admin";
 import type { OryCMSCollectionDefinition } from "@/schema";
 import type { OryCMSContentEntry } from "@/types";
 
@@ -81,7 +81,7 @@ export function OryCMSCollectionContentPage({
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-[13px] text-destructive">
           {schemaError ?? "Collection not found."}
         </div>
-        <Button variant="outline" size="sm" onClick={() => router.push("/collections")}>
+        <Button variant="outline" size="sm" onClick={() => router.push(adminCollectionsPath())}>
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to collections
         </Button>

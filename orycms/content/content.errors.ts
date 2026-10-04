@@ -4,6 +4,7 @@ export type OryCMSContentErrorCode =
   | "FIELD_UNKNOWN"
   | "FIELD_REQUIRED"
   | "FIELD_INVALID"
+  | "OPERATOR_INVALID"
   | "WRITE_FORBIDDEN"
   | "ALREADY_PUBLISHED"
   | "NOT_PUBLISHED";

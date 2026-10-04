@@ -44,3 +44,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+internal/
+AUDIT_REPORT.md

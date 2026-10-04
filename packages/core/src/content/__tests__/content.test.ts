@@ -221,6 +221,114 @@ describe("listOryCMSContentEntries", () => {
     expect(capturedParams).toContain(10);
     expect(capturedParams).toContain(20);
   });
+
+  // ── Query parameter validation (filter/sort allowlisting) ──────────────────
+
+  it("rejects a filter field containing a double quote, without querying the database", async () => {
+    const pool = makePool(() => ({ rows: [{ count: "0" }] }));
+    await expect(
+      listOryCMSContentEntries(
+        "blog-posts",
+        { filters: [{ field: 'title" OR 1=1 --', operator: "eq", value: "x" }] },
+        pool,
+      ),
+    ).rejects.toMatchObject({ code: "FIELD_UNKNOWN" });
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it("rejects a filter field containing a semicolon, without querying the database", async () => {
+    const pool = makePool(() => ({ rows: [{ count: "0" }] }));
+    await expect(
+      listOryCMSContentEntries(
+        "blog-posts",
+        { filters: [{ field: "title; DROP TABLE blog_posts;", operator: "eq", value: "x" }] },
+        pool,
+      ),
+    ).rejects.toMatchObject({ code: "FIELD_UNKNOWN" });
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it("rejects a filter field that simply isn't a column on the collection", async () => {
+    const pool = makePool(() => ({ rows: [{ count: "0" }] }));
+    await expect(
+      listOryCMSContentEntries(
+        "blog-posts",
+        { filters: [{ field: "not_a_real_field", operator: "eq", value: "x" }] },
+        pool,
+      ),
+    ).rejects.toMatchObject({ code: "FIELD_UNKNOWN", field: "not_a_real_field" });
+  });
+
+  it("rejects a filter operator outside the fixed allowlist", async () => {
+    const pool = makePool(() => ({ rows: [{ count: "0" }] }));
+    await expect(
+      listOryCMSContentEntries(
+        "blog-posts",
+        // @ts-expect-error — intentionally invalid operator to prove runtime validation
+        { filters: [{ field: "title", operator: "1=1; DROP TABLE blog_posts;--", value: "x" }] },
+        pool,
+      ),
+    ).rejects.toMatchObject({ code: "OPERATOR_INVALID" });
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it("accepts a known, valid filter field and operator", async () => {
+    const pool = makePool(() => ({ rows: [{ count: "0" }] }));
+    await expect(
+      listOryCMSContentEntries(
+        "blog-posts",
+        { filters: [{ field: "title", operator: "eq", value: "x" }] },
+        pool,
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it("rejects a sort field containing a double quote, without querying the database", async () => {
+    const pool = makePool(() => ({ rows: [{ count: "0" }] }));
+    await expect(
+      listOryCMSContentEntries(
+        "blog-posts",
+        { sort: [{ field: 'title" ; DROP TABLE blog_posts; --', direction: "asc" }] },
+        pool,
+      ),
+    ).rejects.toMatchObject({ code: "FIELD_UNKNOWN" });
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it("rejects a sort field that isn't a column on the collection", async () => {
+    const pool = makePool(() => ({ rows: [{ count: "0" }] }));
+    await expect(
+      listOryCMSContentEntries(
+        "blog-posts",
+        { sort: [{ field: "ghost_field", direction: "asc" }] },
+        pool,
+      ),
+    ).rejects.toMatchObject({ code: "FIELD_UNKNOWN" });
+  });
+
+  it("rejects a sort direction outside asc/desc", async () => {
+    const pool = makePool(() => ({ rows: [{ count: "0" }] }));
+    await expect(
+      listOryCMSContentEntries(
+        "blog-posts",
+        // @ts-expect-error — intentionally invalid direction to prove runtime validation
+        { sort: [{ field: "title", direction: "asc; DROP TABLE blog_posts;--" }] },
+        pool,
+      ),
+    ).rejects.toMatchObject({ code: "OPERATOR_INVALID" });
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it("accepts a known, valid sort field and direction", async () => {
+    const pool = makePool(() => ({ rows: [{ count: "0" }] }));
+    await expect(
+      listOryCMSContentEntries(
+        "blog-posts",
+        { sort: [{ field: "title", direction: "desc" }] },
+        pool,
+      ),
+    ).resolves.toBeDefined();
+  });
 });
 
 // ── getOryCMSContentEntry ─────────────────────────────────────────────────────

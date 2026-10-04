@@ -134,12 +134,12 @@ describe("/admin routes", () => {
 // ── Other protected pages/APIs ─────────────────────────────────────────────────
 
 describe("protected pages and APIs", () => {
-  it("blocks dashboard root without session", () => {
+  it("blocks site root without session (it redirects to /admin once authenticated)", () => {
     const res = middleware(req("/"));
     expect(res.status).toBe(307);
   });
 
-  it("passes dashboard with session", () => {
+  it("passes site root with session (the page itself then redirects to /admin)", () => {
     const res = middleware(authed("/"));
     expect(res.status).toBe(200);
   });

@@ -40,17 +40,17 @@ const searchGroups = [
   {
     heading: "Navigate",
     items: [
-      { label: "Overview", route: "/", icon: ShoppingBag, shortcut: "G O" },
-      { label: "Orders", route: "/orders", icon: ShoppingBag, shortcut: "G R" },
-      { label: "Settings", route: "/settings", icon: Settings, shortcut: "G S" },
+      { label: "Overview", route: "/admin", icon: ShoppingBag, shortcut: "G O" },
+      { label: "Orders", route: "/admin/orders", icon: ShoppingBag, shortcut: "G R" },
+      { label: "Settings", route: "/admin/settings", icon: Settings, shortcut: "G S" },
     ],
   },
   {
     heading: "Recent entities",
     items: [
-      { label: "Order #4108", route: "/orders", icon: CreditCard, shortcut: "O 1" },
-      { label: "Refund review queue", route: "/orders", icon: Shield, shortcut: "Q R" },
-      { label: "Billing settings", route: "/settings", icon: CreditCard, shortcut: "B I" },
+      { label: "Order #4108", route: "/admin/orders", icon: CreditCard, shortcut: "O 1" },
+      { label: "Refund review queue", route: "/admin/orders", icon: Shield, shortcut: "Q R" },
+      { label: "Billing settings", route: "/admin/settings", icon: CreditCard, shortcut: "B I" },
     ],
   },
 ];
@@ -322,7 +322,7 @@ export function Topbar({
                 </div>
                 <div className="border-t border-border px-3 py-2">
                   <button
-                    onClick={() => router.push("/settings")}
+                    onClick={() => router.push("/admin/settings")}
                     className="w-full rounded-md px-3 py-2 text-left text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
                   >
                     Manage notification preferences
@@ -354,15 +354,15 @@ export function Topbar({
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/settings")}>
+                <DropdownMenuItem onClick={() => router.push("/admin/settings")}>
                   <User className="h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/settings")}>
+                <DropdownMenuItem onClick={() => router.push("/admin/settings")}>
                   <Settings className="h-4 w-4" />
                   Workspace settings
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/orders")}>
+                <DropdownMenuItem onClick={() => router.push("/admin/orders")}>
                   <ShoppingBag className="h-4 w-4" />
                   Orders desk
                 </DropdownMenuItem>
