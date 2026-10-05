@@ -13,4 +13,3 @@ export {
   protectOryCMSAdminRoute,
 } from "./auth";
 export type { OryCMSSetupInput, OryCMSAuthUser, OryCMSSessionData } from "./auth";
-export { installOryCMSAuthSchema } from "./install";

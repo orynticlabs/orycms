@@ -10,6 +10,13 @@ vi.mock("@/lib/db", () => ({
   getOryCMSPool: () => ({ query: poolQuery }) as unknown as Pool,
 }));
 
+// bootstrapOryCMS (used by POST /auth/setup) opens its own adapter connection, not
+// the mocked pool above — mock it wholesale, same pattern as auth.test.ts.
+const bootstrapOryCMS = vi.fn();
+vi.mock("@/core", () => ({
+  bootstrapOryCMS: (...args: unknown[]) => bootstrapOryCMS(...args),
+}));
+
 const { createOryCMSRouteHandlers } = await import("../dispatcher");
 const handlers = createOryCMSRouteHandlers();
 
@@ -30,6 +37,11 @@ function req(
 beforeEach(() => {
   queryImpl = () => ({ rows: [] });
   poolQuery.mockClear();
+  bootstrapOryCMS.mockReset();
+  bootstrapOryCMS.mockResolvedValue({
+    install: { success: true, applied: [], skipped: [], failed: [] },
+    seeded: true,
+  });
 });
 
 // ── Routing / matching ───────────────────────────────────────────────────────────
@@ -84,12 +96,25 @@ describe("public auth endpoints", () => {
     const hash = await bcrypt.hash("supersecret", 10);
     queryImpl = (sql: string) => {
       if (sql.includes("SELECT id, email")) {
-        return { rows: [{ id: "u1", email: "owner@acme.io", passwordHash: hash, status: "active", roleId: "r1" }] };
+        return {
+          rows: [
+            {
+              id: "u1",
+              email: "owner@acme.io",
+              passwordHash: hash,
+              status: "active",
+              roleId: "r1",
+            },
+          ],
+        };
       }
       return { rows: [] }; // INSERT session
     };
     const res = await handlers.POST(
-      req("/api/orycms/auth/login", { method: "POST", body: { email: "owner@acme.io", password: "supersecret" } }),
+      req("/api/orycms/auth/login", {
+        method: "POST",
+        body: { email: "owner@acme.io", password: "supersecret" },
+      }),
     );
     expect(res.status).toBe(200);
     const setCookie = res.headers.get("set-cookie") ?? "";
@@ -118,7 +143,10 @@ describe("public auth endpoints", () => {
       return { rows: [] };
     };
     const res = await handlers.POST(
-      req("/api/orycms/auth/setup", { method: "POST", body: { email: "owner@acme.io", password: "supersecret" } }),
+      req("/api/orycms/auth/setup", {
+        method: "POST",
+        body: { email: "owner@acme.io", password: "supersecret" },
+      }),
     );
     expect(res.status).toBe(201);
     expect(res.headers.get("set-cookie")).toBeNull();
