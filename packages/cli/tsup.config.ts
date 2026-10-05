@@ -3,11 +3,11 @@ import path from "path";
 import { chmodSync } from "fs";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/internal.ts"],
   format: ["esm"],
   clean: true,
   sourcemap: false,
-  dts: false,
+  dts: { entry: ["src/internal.ts"] },
   // Real runtime deps + node builtins stay external; everything else is bundled
   external: [
     "@inquirer/prompts",

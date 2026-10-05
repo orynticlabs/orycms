@@ -14,8 +14,8 @@ import { Command } from "commander";
 import { runCreate, createSummaryLines, defaultAnswers } from "../runner";
 import { registerCreateCommand } from "../index";
 import type { CreateAnswers } from "../runner";
-import type { SqliteWizardResult } from "../../../cli/src/commands/init/database/wizard";
-import { fileExists } from "../../../cli/src/shared/fs";
+import type { SqliteWizardResult } from "@ory-cms/cli/internal";
+import { fileExists } from "@ory-cms/cli/internal";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 

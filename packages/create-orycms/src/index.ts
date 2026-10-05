@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 
-import { logger } from "../../cli/src/shared/logger";
-import { detectNextJs } from "../../cli/src/commands/init/detectors/nextjs";
+import { logger, detectNextJs } from "@ory-cms/cli/internal";
 import { runCreate, createSummaryLines } from "./runner";
 import type { CreateAskFn } from "./runner";
 

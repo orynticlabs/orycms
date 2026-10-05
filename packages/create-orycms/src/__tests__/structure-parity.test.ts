@@ -11,8 +11,7 @@ import { tmpdir } from "node:os";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { runInit } from "../../../cli/src/commands/init/init";
-import { bootstrapAdmin } from "../../../cli/src/commands/init/bootstrap";
+import { runInit, bootstrapAdmin } from "@ory-cms/cli/internal";
 import { runCreate } from "../runner";
 import type { CreateAnswers } from "../runner";
 
