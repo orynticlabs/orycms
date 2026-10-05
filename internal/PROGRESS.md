@@ -65,10 +65,10 @@ Shared mechanics every sub-task below follows:
 | U1-3.1 | Auth — session routes | `login`, `logout`, `me`, `session`, `setup`, `setup-status` (6 files, 6 methods) | **DONE (2026-10-05) for the parity+test scope.** `packages/core/src/next/routes/auth.ts` (98 lines) already covered exactly these 6 routes, already wired into `ORYCMS_ROUTES`. Added `packages/core/src/next/__tests__/auth.test.ts` (22 tests) covering success/failure/hook-firing for all 6. Route-by-route parity against root was done and **4 real behavior differences were found and logged, not fixed** (per instruction, since this task forbids behavior changes): `/auth/me`'s `permissions` is hardcoded `[]` in the dispatcher instead of the real RBAC lookup root does; `/auth/session`'s success/error response shapes don't match root's (`{data:{user:{...}}}` + `{success:false,data:null}` vs the dispatcher's flat/`error`-object shapes); `setup`/`setup-status` call the dead-end `installOryCMSAuthSchema` (3-table, no seeding, no explicit failure code) instead of root's `bootstrapOryCMS()` (11-table+seed, explicit `SCHEMA_INSTALL_FAILED`); `setup-status` has a schema-creating side effect root's read-only version doesn't. See the dated log entry for the full parity table and the `installOryCMSAuthSchema` grep-before-delete finding. | The **thin-wrapper step is explicitly deferred** — per the owner's 2026-10-05 instruction, root's 6 `app/api/orycms/auth/{login,logout,me,session,setup,setup-status}/route.ts` files are untouched and stay as the second, independent implementation until `apps/demo` is ready to consume `packages/core` (a later phase, not part of U1-3.1). The shared `toNextHandler` adapter mentioned in the original acceptance criteria is **not yet built** — defer it to whichever sub-task first actually thin-wraps a root file. | **Lowest risk — done first after U1-3.0, as planned.** The parity audit surfaced more real gaps than expected (see above) — none are security-sensitive in themselves (no auth bypass), but `/auth/me`'s hardcoded-empty-permissions bug would silently break permission-gated UI if the admin dashboard started consuming this dispatcher today. Flagged, not fixed. |
 | U1-3.1b | Auth — fix the 4 session-route parity bugs U1-3.1 found | The same 4 routes: `setup`, `setup-status`, `session`, `me` | **DONE (2026-10-05).** All 4 bugs fixed: `GET /auth/me` now computes the real permission list via `getOryCMSUserPermissions()`; `GET /auth/session` now matches root's exact shapes (`{data:{user:{...}}}` on success, `{success:false,data:null}` on any failure — split into its own `sessionRoute` const, no longer sharing a factory with `/me`); `POST /auth/setup` now calls `bootstrapOryCMS()` (already present, identical to root, in `packages/core/src/core/bootstrap.ts` — nothing needed porting) with an explicit `SCHEMA_INSTALL_FAILED`/500 check; `GET /auth/setup-status` is now a pure read. `installOryCMSAuthSchema` deleted (`packages/core/src/auth/install.ts` removed entirely, its two exports removed from `auth/index.ts` and root `index.ts`) after a repo-wide grep confirmed zero remaining uses. | Test-first: updated/added tests in `auth.test.ts` first, ran them against the unchanged code and captured 7 real failures, then fixed the route code, then reran to all-green (24 tests). Also had to add a `bootstrapOryCMS` mock to `dispatcher.test.ts` (its existing setup-success test broke the same way, since `bootstrapOryCMS` opens its own DB connection rather than going through the mocked pool). | Done as its own sub-task (`U1-3.1b`) rather than folded back into U1-3.1, since the owner asked for it as a separate, explicitly-scoped follow-up after the parity audit. |
 | U1-3.2 | Auth — token-based flows | `refresh`, `forgot-password`, `reset-password`, `activate`, `invite`, `accept-invite` (6 files, 6 methods) | **DONE (2026-10-05).** Ported all 6 into a new `packages/core/src/next/routes/auth-tokens.ts` (file-size warranted a split from `auth.ts`, as the original acceptance criteria anticipated), wired into `ORYCMS_ROUTES` alongside `auth.ts`'s routes. Faithful, line-for-line port — `@/auth/token-links` and `@/tokens` needed no changes (already framework-agnostic / already identical between trees). 4 real root weaknesses found during the parity work and **logged, not fixed, not silently differed**: no rate limiting (**P2-15**), `forgot-password`'s key-presence enumeration signal (**P2-16**), `invite`/`accept-invite`'s un-caught audit-log call plus `refresh`'s un-caught old-session-delete (**P2-17**), `invite`'s reliance on a DB constraint for duplicate-email (generic 500 instead of 409) (**P2-18**). | 35 new tests in `packages/core/src/next/__tests__/auth-tokens.test.ts`, test-first (33/35 failed with 404 against the unwired code, captured as real output, before implementing). `mvp-surface.test.ts` updated to include the 6 new routes (was hard-pinned to the old 6-route list). Thin-wrapping the 6 root files is **still deferred**, same as U1-3.1/U1-3.1b — per the standing instruction, root stays untouched until `apps/demo` is ready to consume `packages/core`. | Done second, as planned — security-sensitive (password reset / account-activation / invite tokens) and genuinely new porting work. The parity audit surfaced 4 real root weaknesses (not porting mistakes) rather than the "subtle porting mistake" risk the original note anticipated — see the dated log entry for the full route table and before/after test evidence. |
-| U1-3.3 | Audit log | `audit` (1 file, 1 method: GET) | **Already ported, identical logic** — `packages/core/src/next/routes/audit.ts` (26 lines), confirmed near-verbatim against the root file during this planning pass. | Essentially zero new logic — wire + thin-wrap + a test file (none exists today for this route in either tree). | `audit.test.ts` added (401/403/200 cases, matching the `collections.test.ts` pattern); wired; root file thin-wrapped. | **Lowest-risk route-module sub-task, do third.** Single route, read-only, already verified identical by hand in this planning pass — good warm-up after the two auth sub-tasks before moving to modules with write side effects. |
-| U1-3.4 | Settings (incl. API-key stubs) | `settings`, `settings/api-keys`, `settings/api-keys/[id]` (3 files, 5 methods) | **Already ported** — `packages/core/src/next/routes/settings.ts` (94 lines), including the API-key 501 stubs matching the root exactly. | Parity-proof (the `PATCH settings` route does a real write + audit-log record — check that side effect matches exactly) + tests + thin-wrap. | `settings.test.ts` covering all 5 routes; wired; root files thin-wrapped. | **Low risk.** One route has a real write (setting update), rest are read or 501 stubs. No cross-user security surface (it's instance-wide config, already gated by `settings:*` permissions). |
-| U1-3.5 | Database | `database/migrations`, `database/schemas` (2 files, 3 methods) | **Already ported** — `packages/core/src/next/routes/database.ts` (63 lines). | Parity-proof + tests + thin-wrap. `POST database/migrations` calls `bootstrapOryCMS()` (the full schema installer) — exercise this against a real test DB, not just a mock, given it's the exact code path U4-3's atomicity work will later change. | `database.test.ts` covering all 3 routes; wired; root files thin-wrapped. Explicitly note in the test file that `POST` here will need re-verifying once U4-3 lands (transactional install). | **Moderate risk — do after the read-mostly modules.** `POST database/migrations` is the one route in this whole plan that can leave the schema in a different state if something goes wrong; do it once the thin-wrapper pattern (U1-3.1–U1-3.4) is proven out, not as an early sub-task. |
-| U1-3.6 | Roles | `roles`, `roles/[id]`, `roles/[id]/permissions` (3 files, 7 methods) | **Already ported** — `packages/core/src/next/routes/roles.ts` (160 lines). | Parity-proof (RBAC role/permission CRUD — check the exact permission-check and audit-log calls match) + full test coverage (today's coverage is zero for this module in either tree) + thin-wrap. | `roles.test.ts` covering all 7 routes incl. at least one unauthorized-permission-escalation-attempt test (e.g. a non-admin trying to grant itself a permission via `PUT roles/:id/permissions`); wired; root files thin-wrapped. | **Security-sensitive — extra test requirement, explicit escalation-path test.** Roles gate everything else in the system; a parity miss here (e.g. a missing permission check) is a privilege-escalation bug, not a cosmetic one. |
+| U1-3.3 | Audit log | `audit` (1 file, 1 method: GET) | **PARTIAL (2026-10-06).** `packages/core/src/next/routes/audit.ts` now rejects non-integer `limit`/`offset` with 400 (root still 500s on those; see P2-19), and `audit.repo.ts` caps `offset` at the safe-integer range. Still NOT registered in `ORYCMS_ROUTES` (owner instruction: register nothing new in this task) and root `app/api/orycms/audit/route.ts` is NOT thin-wrapped (owner instruction: root untouched). Previously: identical logic to root. | Essentially zero new logic — wire + thin-wrap + a test file (none exists today for this route in either tree). | `packages/core/src/next/__tests__/audit.test.ts` added (17 tests, all active; the unknown-parameter test that was skipped is now active, per the 2026-10-06 decision). **Wiring and root thin-wrap deferred** — see Log 2026-10-06. | **Lowest-risk route-module sub-task, do third.** Single route, read-only, already verified identical by hand in this planning pass — good warm-up after the two auth sub-tasks before moving to modules with write side effects. |
+| U1-3.4 | Settings (incl. API-key stubs) | `settings`, `settings/api-keys`, `settings/api-keys/[id]` (3 files, 5 methods) | **PARTIAL (2026-10-06).** `packages/core/src/next/routes/settings.ts`: PATCH now validates body shape (JSON object, key pattern, value present, description type/length) with 422s; the API-key 501 stubs match root. **No API-key feature exists in either tree** (see P2-24). Still unregistered in the dispatcher (owner decision: until U1-3.11). | Parity-proof (the `PATCH settings` route does a real write + audit-log record — check that side effect matches exactly) + tests + thin-wrap. | `packages/core/src/next/__tests__/settings.test.ts` added (22 active tests; the 2 API-key placeholder tests were deleted 2026-10-06 per owner decision). **Wiring and root thin-wrap deferred** — see Log 2026-10-06 (U1-3.4). | **Low risk.** One route has a real write (setting update), rest are read or 501 stubs. No cross-user security surface (it's instance-wide config, already gated by `settings:*` permissions). |
+| U1-3.5 | Database | `database/migrations`, `database/schemas` (2 files, 3 methods) | **PARTIAL (2026-10-06).** `packages/core/src/next/routes/database.ts`: driver and connection detail no longer reaches responses (generic 500 with `INTERNAL_ERROR`; failed install returns `SCHEMA_INSTALL_FAILED` with migration IDs only; detail logged with credentials redacted). **Root still leaks** — see P2-25 and P2-26. Not registered in the dispatcher (owner decision: until U1-3.11). | Parity-proof + tests + thin-wrap. `POST database/migrations` calls `bootstrapOryCMS()` (the full schema installer) — exercise this against a real test DB, not just a mock, given it's the exact code path U4-3's atomicity work will later change. | `database.test.ts` covering all 3 routes; wired; root files thin-wrapped. Explicitly note in the test file that `POST` here will need re-verifying once U4-3 lands (transactional install). | **Moderate risk — do after the read-mostly modules.** `POST database/migrations` is the one route in this whole plan that can leave the schema in a different state if something goes wrong; do it once the thin-wrapper pattern (U1-3.1–U1-3.4) is proven out, not as an early sub-task. |
+| U1-3.6 | Roles | `roles`, `roles/[id]`, `roles/[id]/permissions` (3 files, 7 methods) | **PARTIAL (2026-10-06).** `packages/core/src/next/routes/roles.ts`: now validates names, descriptions and permission-id lists (422); refuses changes to built-in roles and to the caller's own role (409); refuses to delete a role that has users (409 `ROLE_IN_USE`); refuses permission ids that do not exist (422) and grants the caller cannot make itself (403); maps a unique-name clash to 409; and returns no driver text. **Root has the escalation and silent-clear gaps** — see P1-8. Not registered in the dispatcher (owner decision: until U1-3.11). | Parity-proof (RBAC role/permission CRUD — check the exact permission-check and audit-log calls match) + full test coverage (today's coverage is zero for this module in either tree) + thin-wrap. | `roles.test.ts` covering all 7 routes incl. at least one unauthorized-permission-escalation-attempt test (e.g. a non-admin trying to grant itself a permission via `PUT roles/:id/permissions`); wired; root files thin-wrapped. | **Security-sensitive — extra test requirement, explicit escalation-path test.** Roles gate everything else in the system; a parity miss here (e.g. a missing permission check) is a privilege-escalation bug, not a cosmetic one. |
 | U1-3.7 | Users | `users`, `users/[id]` (2 files, 5 methods) | **Already ported** — `packages/core/src/next/routes/users.ts` (124 lines); spot-diffed against root during this planning pass — same business logic, different error-construction idiom (root uses ad hoc `Object.assign(new Error(...), {...})`, core uses a `statusError()` helper) — reconcile which idiom wins before wiring (recommend adopting core's `statusError()` consistently, since it's already used elsewhere in the dispatcher; note the choice either way). | Full test coverage (zero today) incl. password-handling paths (`createOryCMSUser`/`updateOryCMSUser` with a password field) and a test proving a non-privileged caller cannot `PATCH`/`DELETE` another user's account. | `users.test.ts` covering all 5 routes incl. the privilege-check test above; wired; root files thin-wrapped. | **Security-sensitive — extra test requirement, same reasoning as roles.** Do right after roles since the two share the same class of risk (authZ-on-another-principal) and the same test pattern can be reused. |
 | U1-3.8 | Media | `media`, `media/[id]`, `media/folders` (3 files, 7 methods) | **Already ported** — `packages/core/src/next/routes/media.ts` (139 lines vs. 220 combined root lines — more condensed, uses `NextResponse`-adjacent patterns in the root version that need re-checking against the dispatcher's Web-`Response`-only contract). | Parity-proof with extra care on the upload path (`uploadOryCMSMedia`) — confirm request-body/multipart handling behaves identically through the dispatcher's generic `Request` as it does through `NextRequest` today, since this is the one module where the two runtime types could plausibly behave differently (streaming bodies). Full test coverage (zero today). | `media.test.ts` covering all 7 routes incl. at least one upload-path test exercising the actual `Request`-body reading the dispatcher uses; wired; root files thin-wrapped. | **Moderate-to-higher risk — do after roles/users, before collections.** Not a security/authZ risk particularly (same guard pattern as everything else), but the only module with a real chance of a runtime-behavior gap (`NextRequest` vs. generic `Request` body handling), so budget real verification time, not just a logic diff. |
 | U1-3.9 | Collections (incl. content, fields, migration-preview, publish) | 10 files, 20 methods — by far the largest module | **Already ported** — `packages/core/src/next/routes/collections.ts` (349 lines), already partially tested (`collections.test.ts` covers exactly 1 of the 20 routes: `GET collections`, via 3 tests). | The other 19 of 20 routes need test coverage added. This is the biggest sub-task by test-writing volume (not by porting — the logic is already there) — consider whether it still fits one session; if not, split further by sub-resource (e.g. `U1-3.9a` collections+fields, `U1-3.9b` content+publish, `U1-3.9c` migrations+migration-preview) at execution time rather than guessing the split now. | `collections.test.ts` extended to cover all 20 routes; wired (collections was the one module `dispatcher.test.ts`'s "does not ship advanced module routes" test was written against — that test must be updated here); root files (10 of them) thin-wrapped. | **Do second-to-last, not first, despite being "the obvious one."** It's the biggest surface and the module most other work (admin UI's collection builder) depends on — do it once every smaller sub-task above has already proven out the thin-wrapper pattern, the test-writing pattern, and the parity-review process, so the one truly large sub-task benefits from a settled process instead of inventing one under its own weight. |
@@ -146,6 +146,24 @@ Shared mechanics every sub-task below follows:
 | P2-16 | **P0 (upgraded 2026-10-05; was P2)** | `app/api/orycms/auth/forgot-password/route.ts` (and `packages/core`'s faithful port) was not fully enumeration-safe (key-presence signal), **AND, more seriously, the same `dispatch.link` mechanism returned the raw reset/invite token to the HTTP caller whenever `sendOryCMSEmail` THREW, not only when no provider was configured** — meaning a transient provider failure (or a config-load failure) against a nominally-"configured" production email setup silently degraded into handing out working reset tokens, with zero logging of the degradation. | **DONE (2026-10-05)** | Fixed in both `orycms/`/`app/` and `packages/core/src`. See the dated "P0-16 fix" log entry below for the full before/after and test evidence. |
 | P2-17 | P2 | `app/api/orycms/auth/invite/route.ts` and `.../accept-invite/route.ts` (and `packages/core`'s faithful ports) call `recordOryCMSAuditLog(...)` WITHOUT a `.catch(() => {})`, unlike every other one of these 6 routes (`forgot-password`/`reset-password`/`activate` all swallow audit-log failures). If the audit-log insert fails: for `invite`, the new (pending) user and invite token have already been created/dispatched, but the caller gets a 500 — a client retry on the same email would then hit the DB's unique-email constraint as a confusing secondary failure. For `accept-invite`, the user's password has already been changed and a new session token already minted (just never returned/cookied), but the caller gets a 500 with no way to know the account is now in a different state than before the call. Found 2026-10-05 during U1-3.2. | NEW, TODO | Root-level inconsistency between routes, not introduced by the port. Root's own `refresh` route has an analogous gap: `destroyOryCMSUserSession(pool, rawToken)` (deleting the OLD token) is also not wrapped in `.catch()`, unlike `logout`'s otherwise-equivalent call — a failure there would fail the whole refresh after a new token was already minted. |
 | P2-18 | P2 | `app/api/orycms/auth/invite/route.ts` (and `packages/core`'s faithful port) relies on the database's `UNIQUE` constraint on `orycms_users.email` to reject a duplicate invite — `createOryCMSUser` has no pre-check. A duplicate-email invite therefore surfaces as a generic, unhelpful `INTERNAL_ERROR`/500 (the raw Postgres constraint-violation error has no `.code`/`.statusCode`, so `toErrorResponse` can't map it to anything clearer) instead of a clean `409 Conflict`-style response the admin UI could show meaningfully. Found 2026-10-05 during U1-3.2. | NEW, TODO | Root-level gap, ported faithfully. |
+| P2-19 | P2 | Root `orycms/audit/audit.repo.ts` has no upper bound on `offset`, and root `app/api/orycms/audit/route.ts` passes non-numeric `limit`/`offset` through `Number()` unchecked, so a bad value reaches SQL as `NaN` and surfaces as a generic 500. Found 2026-10-06 during U1-3.3. `packages/core` is fixed (route validates integers → 400; repo caps offset at `Number.MAX_SAFE_INTEGER`); **root left unchanged per owner instruction**. Apply the same two changes to root when root is next touched or when U1-3.3's thin-wrap lands. | TODO | Input-validation hardening, not an authz issue: the list query already binds every filter value as a parameter. |
+| P2-20 | P3 | `GET /api/orycms/audit` silently ignores unknown query parameters (e.g. `?unknownFilter=1` returns 200). Rejecting them would be a REST contract change, so this is **awaiting an owner decision**. The matching test in `packages/core/src/next/__tests__/audit.test.ts` is skipped until then. | DECIDED 2026-10-06 | Owner decision: unknown query parameters are **ignored** (see Decisions). `audit.test.ts` asserts this; the skipped test was replaced. |
+| P2-21 | P3 | Audit rows written by `forgot-password` (both trees) store the requested email address in `metadata`, including for addresses that do not exist (`found: false`). Anyone with `audit:read` can read those addresses back through the audit list. Not a credential, but worth an owner decision on retention and visibility. | TODO | Found 2026-10-06 while checking audit payloads for credential material; no credential material was found in any `metadata` writer. |
+
+| P2-22 | P2 | Root `app/api/orycms/settings/route.ts` `PATCH` does no shape validation: a malformed JSON body becomes a generic 500; a non-string `key` (object, number) is passed to SQL; a missing `value` is written as `NULL`; `description` is unbounded. `packages/core` now returns 422 for each (validation in `settings.ts`). **Root left unchanged per owner instruction.** Apply the same validation when root becomes a thin wrapper (U1-3.4 thin-wrap step), as with P2-19. | TODO | Found 2026-10-06 during U1-3.4. Input validation only; no authz bypass (the guard runs first). |
+| P2-23 | P2 | Settings values have no sensitivity policy. Any holder of `settings:read` can read every value, and any holder of `settings:update` can store any value, including a credential, with no check. Nothing in the current code writes a secret into `orycms_settings` (SMTP config is read from env/config; the seeder writes only `site_name`), but nothing prevents it either. **Owner decision needed:** (a) keep open, (b) reserve a key prefix or allowlist for non-secret keys, or (c) move credentials out of the settings table entirely. | TODO | Decision required before any API surface for settings is public (U1-3.11). Not fixed in this task. |
+| P2-24 | P1 | **API keys do not exist in either tree.** Root's `settings/api-keys` routes are 501 stubs; `orycms/services/settings.service.ts` throws `"Not implemented"` for `getApiKeys`/`createApiKey`/`deleteApiKey` (its `createApiKey` type signature returns a plaintext `secret`, which is a contract to revisit at design time). No table, no generator, no storage. The required properties (CSPRNG generation, one-time display, hashed storage, list/get shows at most a short prefix, revoke gated by `settings:delete`) are therefore **unimplemented, not merely unverified**. Needs its own feature task with a design first. | TODO | Out of scope for the beta (owner decision 2026-10-06): the 501 stubs are removed in the cleanup phase, and the README must not claim API keys. When the feature is designed, its tests (hashed storage, shown once) are written fresh; the placeholder tests were deleted on 2026-10-06. |
+
+| P2-25 | **P1** | **Root's shared error mapper leaks driver messages.** `orycms/lib/route-guards.ts`'s `toErrorResponse` (identical in `packages/core`, which I did NOT copy the behaviour into for database routes) treats any thrown value with a string `code` as a safe, client-facing error and returns its raw `message` with status 400. Postgres driver errors carry a string SQLSTATE `code`, so a connection or auth failure in **any** route that uses `toErrorResponse` can return connection detail (host, user, database name) to the caller with a 400. Found 2026-10-06 during U1-3.5. **Root left unchanged per owner instruction.** Fix at thin-wrap by returning a generic 500 for anything that is not a deliberate status error, and check every root route that uses this mapper. | DONE (2026-10-06, see Log) | Credential-adjacent detail reaching responses. Verified by reading the code and by a failing-then-passing test in `database.test.ts`; not reproduced against a live database. |
+| P2-26 | P2 | Root `app/api/orycms/database/migrations/route.ts` `POST` returns the full install result as the response body, including `install.failed[].error`, which the adapter fills with `String(err)` (driver text, `orycms/database/adapters/postgresql.adapter.ts:288`). On a failed install it returns that body with status 500 **and `success: true`**, which contradicts the envelope. `packages/core` returns a generic `SCHEMA_INSTALL_FAILED` envelope with `success: false` and migration IDs only, so its response **differs from root by design**. Fixed 2026-10-06 in root (see Log): root now returns the same `SCHEMA_INSTALL_FAILED` envelope as core. | DONE (2026-10-06) | Found 2026-10-06 during U1-3.5. The adapter's `String(err)` also remains in `packages/core`'s copy of the adapter; the route no longer returns it, but a server-log redaction is the only protection there. |
+| P2-27 | P2 | **Schema install is not atomic (confirms and scopes P2-12 / U4-3).** `installOryCMSCoreSchema` runs migrations one at a time and records each success on its own, so a failure partway through leaves the earlier migrations applied and the later ones missing. `bootstrapOryCMS` then skips seeding (`seeded` stays `false`). The write route reports this as `SCHEMA_INSTALL_FAILED`, which is correct, but a rerun is needed to finish. Not changed in this task; it is U4-3's job. | TODO | Scheduled under U4-3. Recorded here because the route is the one place it becomes visible. |
+
+| P1-8 | **P1** | **Root roles routes allow privilege escalation and silent permission clears.** In `app/api/orycms/roles/[id]/permissions/route.ts` `PUT`, the only check is `roles:update`. Nothing checks that the caller holds the permissions it grants, so a custom role with `roles:update` can grant itself `users:manage` and any other permission. The same route turns a non-array `permissionIds` into `[]`, so a malformed body silently removes every permission from the role. Root also lets anyone with `roles:update` or `roles:delete` change or delete the built-in roles (Owner, Admin, Editor, Author, Viewer) and the role they hold. Root's `POST`/`PATCH` also accept any value for `name` and do no length or pattern check. Found 2026-10-06 during U1-3.6. **Root left unchanged per owner instruction.** `packages/core` does not copy any of this. Fix at thin-wrap, and treat the escalation as release-blocking for any build that exposes roles. | TODO | Verified by reading the code and by failing-then-passing tests in `roles.test.ts` (escalation cases, silent-clear cases). Not reproduced against a live database. |
+| P2-28 | P2 | Root roles routes, smaller items: (a) `DELETE` on a role that still has users assigned succeeds, and the FK `SET NULL` silently strips those users of their role and permissions (`orycms_users.roleId` has no cascade). `packages/core` refuses with `ROLE_IN_USE`. (b) `setOryCMSRolePermissions` runs a `DELETE` then a loop of `INSERT`s without a transaction, so a failure partway leaves the role with a partial permission set. Not changed here (it's an engine change in both trees; scheduled with the other install-atomicity work, U4-3, unless the owner prefers otherwise). (c) `getOryCMSRole` throws `UNAUTHORIZED` with status 404 for a missing role, so the code is misleading. `packages/core`'s route keeps that behaviour unchanged for now. (d) A duplicate role name surfaces as a driver error (`23505`) and, through the shared mapper, as a 400 with driver text (P2-25). `packages/core` maps it to `ROLE_NAME_TAKEN` (409). | TODO | Found 2026-10-06 during U1-3.6. |
+| P2-29 | P2 | **Owner to confirm the roles rules implemented in `packages/core` (U1-3.6).** (1) Built-in roles cannot be renamed, re-described, deleted, or have their permission set changed (409 `BUILT_IN_ROLE`). The stricter reading is deliberate: the owner can loosen it, e.g. to allow permission edits on Editor/Author/Viewer. (2) The caller cannot change or delete the role it holds (409 `SELF_ROLE`). (3) A role with users cannot be deleted (409 `ROLE_IN_USE`). (4) Role names are limited to 64 characters, letters, digits, space, `_` and `-`, starting with a letter. Descriptions are at most 500 characters. Permission-id lists are at most 500 entries. | TODO | Decision needed before the roles API is exposed (U1-3.11). |
+
+| P2-30 | **P1** | **`packages/core`'s shared `toErrorResponse` still has the driver-detail leak.** `packages/core/src/lib/route-guards.ts` is a copy of root's mapper. The database and roles routes in `packages/core` now use `safeRouteError` (`route-errors.ts`) and are safe. Every other core route still calls `toErrorResponse`: audit, settings, users, the auth routes, and the rest of the core route modules. A driver error in any of them can return connection detail with status 400. Found 2026-10-06 while checking the premise that core was already safe. **Not changed in this task** (scope: root only). Fix by making core's `toErrorResponse` match root's new behaviour, or by moving every core route onto `safeRouteError`. Do this before the Neon browser check. | TODO | The 2026-10-06 instruction assumed core was already safe. It is safe only for the two routes switched over. |
+
 
 Independent hygiene items, not part of the unification plan, still open: **P2-2** (untrack generated/internal files from git, per `internal/FILE_CLASSIFICATION.md`'s proposed commands, still requires owner approval) and **P2-13** (new, 2026-10-04 — resolve the remaining 13 dev-toolchain-only `npm audit` findings left after P0-3: ESLint's `@next/eslint-plugin-next` → `fast-glob@3.3.1` → `micromatch` → `braces` chain, plus Vitest/Vite/esbuild/browserslist/baseline-browser-mapping/js-yaml/nanoid. None are runtime-reachable — all 13 are devDependencies only. `npm audit fix` (non-force, confirmed via `--dry-run`) reports fixes available for all of them, but deliberately not run as part of P0-3 since it's out of that task's scope (pinning `next`, not a general dev-toolchain audit sweep) — running it is this follow-up's actual work). **P0-3 itself is now DONE** — see the Done table above.
 
@@ -182,6 +200,326 @@ Deferred / backlog, genuinely untouched by this plan (real future feature work, 
 ---
 
 ## Log (newest first)
+
+### 2026-10-06 — P2-25 and P2-26 done: root error mapper and failed-install response (working tree, uncommitted — no branch created)
+
+**Scope:** root files, as the owner allowed for this task only: the shared error mapper and the failed-install response. No other root behaviour changed. Nothing registered, no version bumps, no publish, no database touched.
+
+**Lint baseline before starting:** `npm run lint` at root → `212 problems (212 errors, 0 warnings)`, exit 1. Final: `210 problems`, exit 1. Two fewer, because formatting `route-guards.ts` and the migrations route removed pre-existing prettier errors in those files. No new errors.
+
+**0. Decisions recorded:** built-in roles fully locked in the beta, own role cannot be edited or deleted (P2-29); P1-8 fixed at thin-wrap, P2-28 later.
+
+**1. Every root route that uses `toErrorResponse` (before any change)** — 28 route files, all of which pass errors through the same mapper:
+
+`app/api/orycms/`: `audit/route.ts`; `auth/{accept-invite,activate,forgot-password,invite,me,refresh,reset-password}/route.ts`; `collections/[collection]/fields/route.ts`; `collections/[collection]/fields/[id]/route.ts`; `customers/route.ts`; `database/migrations/route.ts`; `database/schemas/route.ts`; `orders/route.ts`; `plugins/route.ts`; `plugins/[slug]/route.ts`; `products/route.ts`; `roles/route.ts`; `roles/[id]/route.ts`; `roles/[id]/permissions/route.ts`; `seo/redirects/route.ts`; `seo/redirects/[id]/route.ts`; `seo/sitemap/route.ts`; `settings/route.ts`; `settings/api-keys/route.ts`; `settings/api-keys/[id]/route.ts`; `users/route.ts`; `users/[id]/route.ts`.
+
+Plus `orycms/lib/route-guards.ts` (the definition) and `orycms/lib/__tests__/route-guards.test.ts`.
+
+**Not using `toErrorResponse`:** `auth/setup/route.ts` (already returns a generic `SCHEMA_INSTALL_FAILED` body of its own) and `auth/setup-status`, `auth/login`, `auth/logout`, `auth/session` (not in the list above, so they handle errors their own way — not checked further in this task).
+
+**2. The mapper, before and after**
+
+- **Before:** (a) a numeric `statusCode` plus string `code` → message passed through; (b) **any** error with a string `code`, which includes every Postgres driver error (SQLSTATE), → message passed through with status 400 (or 404 for `*_NOT_FOUND`); (c) anything else → generic 500.
+- **After:** (a) unchanged; (b) only the plugin and manifest error classes (`OryCMSPluginError`, `OryCMSManifestError`), which are the deliberate status-less errors; (c) **everything else → generic 500 `INTERNAL_ERROR`**, with the detail logged through `redactDetail` (URLs → `[redacted-url]`, `password=` → `password=[redacted]`). This is the same approach as `packages/core/src/next/route-errors.ts`. `redactDetail` is exported from `route-guards.ts` for the migrations route to use.
+
+**3. Failed-install response (root `POST database/migrations`)**
+
+- **Before:** `oryJsonOk(result, 500)` → `{success:true, data:{install:{failed:[{error: <driver text>}]}}}` with status 500.
+- **After:** `{success:false, error:{code:"SCHEMA_INSTALL_FAILED", message:"Database schema install failed. See server logs.", failed:[{migrationId, name}]}}`, status 500. Driver text is logged per migration through `redactDetail`. Matches core.
+- **Accepted:** `success:false` with status 500 (owner, 2026-10-06).
+
+**4. Consumers of the old body (searched before changing)**
+
+- No UI code, no `packages/next` code, no CLI code calls `database/migrations`. Searched `app`, `components`, `packages/next/src`, `packages/cli/src` for the path and the body field names.
+- No existing root test asserts on the old failed-install body. The only `SCHEMA_INSTALL_FAILED` consumer is `app/api/orycms/auth/setup/route.ts`, which builds its own generic body and is unaffected.
+- **One existing root test was adapted:** `orycms/lib/__tests__/route-guards.test.ts` had two cases that relied on the old pass-through by using plain `Object.assign(new Error(...), {code})`. They now use `OryCMSPluginError` instances, which are the realistic deliberate case. Assertions unchanged (400 default, 404 for `*_NOT_FOUND`). The full root suite was green after this.
+
+**5. Tests (test-first, real output)**
+
+Before the change, `route-error-detail.test.ts` + `database/migrations/__tests__/route.test.ts` + `roles/__tests__/route.test.ts` → **9 failed, 12 passed (21)**. The 9 failures were all leaks: a driver error with code `28P01` and a fake URL returned in the body (both the GET and the POST routes, and the roles list); the failed-install body containing the URL; a `23505` driver error returned as a 400 with its message; the logs containing the URL and password; and a plain-coded error passing through. The 12 that passed already did so: 401/403 on each route, the success envelopes, a plain error without a code, and deliberate auth/plugin/manifest pass-through.
+
+After the change: **21 passed (21)** for the three new files. Full root suite: `63 passed (63) files, 1392 passed (1392) tests`.
+
+New root test files: `orycms/lib/__tests__/route-error-detail.test.ts` (9 tests), `app/api/orycms/database/migrations/__tests__/route.test.ts` (10 tests), `app/api/orycms/roles/__tests__/route.test.ts` (2 tests). Total new: 21 tests across three files.
+
+**6. Changed files**
+
+- `orycms/lib/route-guards.ts`: new `toErrorResponse` behaviour, `redactDetail` (exported), `logRouteDetail`.
+- `app/api/orycms/database/migrations/route.ts`: failed-install response and per-migration redacted log.
+- `orycms/lib/__tests__/route-guards.test.ts`: two cases switched to `OryCMSPluginError` (see 4).
+- New: `orycms/lib/__tests__/route-error-detail.test.ts`, `app/api/orycms/database/migrations/__tests__/route.test.ts`, `app/api/orycms/roles/__tests__/route.test.ts`.
+- `internal/PROGRESS.md`: this entry, the decisions, P2-25 and P2-26 marked DONE, new P2-30.
+
+**7. Quality gate (real output)**
+
+- Root: typecheck rc=0 (0 TS errors). Lint rc=1, **210 errors** (baseline 212; none in the changed files — the scoped lint on all changed root files is rc=0). `npm test` rc=0 → `Test Files 63 passed (63)`, `Tests 1392 passed (1392)`. `npm run build` rc=0.
+- `packages/core`: typecheck rc=0, `npx vitest run` → `Test Files 47 passed (47)`, `Tests 968 passed (968)`, build rc=0. Unchanged in this task.
+- Housekeeping: root typecheck regenerated `tsconfig.tsbuildinfo`; restored from `HEAD` with `git show` (read-only).
+
+**8. Not done / UNVERIFIED**
+
+- **Not done:** packages/core's own `toErrorResponse` (P2-30, P1 — found while checking the premise); thin-wrap of the other 26 root routes; P1-8 and P2-28 (thin-wrap later).
+- **UNVERIFIED:** live behaviour against a real database, including what `pg` puts in a real error. Redaction covers URL-shaped and `password=` text only. Whether the other 26 routes contain any response path that still carries detail (they now go through the fixed mapper, but I did not read each one's own catch blocks beyond the mapper call).
+- **Behaviour change in root:** any thrown error without a numeric `statusCode` and without being a plugin or manifest error now returns a generic 500 instead of its message. Expected to affect only driver and unexpected errors.
+
+**Suggested branch (not created):** `fix/root-error-mapper-and-install-response`
+**Suggested commit message (generic):** `fix(orycms): return generic errors for unexpected failures and report failed installs without driver text`
+
+### 2026-10-06 — U1-3.6 partial: roles routes parity, escalation and built-in protection, validation, tests (working tree, uncommitted — no branch created)
+
+**Scope:** roles routes only, plus a small shared helper for route errors (`packages/core/src/next/route-errors.ts`, not exported). Root `orycms/` and `app/` NOT changed. Nothing registered in `ORYCMS_ROUTES`. No version bumps, publish, or public export changes. No database touched.
+
+**Lint baseline before starting:** `npm run lint` at root → `212 problems (212 errors, 0 warnings)`, exit 1. Final: still 212, none in touched files.
+
+**0. Decisions recorded** (Decisions section): P2-25/P2-26 become their own small task before the Neon browser check; P2-27 stays in U4-3; failed install returns `success:false` with 500 (accepted).
+
+**1. Parity table — root `app/api/orycms/roles/**` vs `packages/core/src/next/routes/roles.ts`**
+
+| Route | Permission | Validation (core, after this task) | Success | Codes (core) |
+|---|---|---|---|---|
+| `GET roles` | `roles:read` | none | 200 role rows `{id,name,description}` | 401, 403, 500 |
+| `POST roles` | `roles:create` | name required, pattern and ≤64 chars; description ≤500; JSON object (422) | 201 role; audit `create` | 401, 403, 409 `ROLE_NAME_TAKEN`, 422, 500 |
+| `GET roles/:id` | `roles:read` | none | 200 role | 401, 403, 404, 500 |
+| `PATCH roles/:id` | `roles:update` | name pattern if present; description ≤500; **refuses built-in and own role** (409) | 200 role; audit `update` | 401, 403, 404, 409 `BUILT_IN_ROLE`/`SELF_ROLE`/`ROLE_NAME_TAKEN`, 422, 500 |
+| `DELETE roles/:id` | `roles:delete` | **refuses built-in, own role, and roles with users** (409 `ROLE_IN_USE`) | 200 `{id, deleted:true}`; audit `delete` | 401, 403, 404, 409, 500 |
+| `GET roles/:id/permissions` | `roles:read` | none | 200 `{id,name,resource,action}` rows | 401, 403, 500 |
+| `PUT roles/:id/permissions` | `roles:update` | `permissionIds` must be an array of ≤500 non-empty strings ≤64 chars (422); **unknown ids → 422**; **caller may grant only what it holds** (403); built-in / own role → 409 | 200 `{roleId, permissionIds}`; audit `update` | 401, 403, 409, 422, 500 |
+
+Root has no route-level tests for roles, so nothing to port. Root's differences are logged as **P1-8** and **P2-28**.
+
+**2. Answers to step 2 (both trees, checked by reading the code)**
+
+- **Grant permissions you do not hold?** Root: **yes**. `PUT` checks only `roles:update`, so a custom role with `roles:update` can grant itself any permission, including `users:manage`. Core: **no**. The caller must hold each requested permission directly or through `resource:manage`. Tested. (P1-8.)
+- **Edit or delete built-in roles, or the caller's own role?** Root: **yes** to both. Core: **no**, both refused with 409 (`BUILT_IN_ROLE`, `SELF_ROLE`). The stricter reading for built-in roles is an owner decision (P2-29).
+- **Delete a role that still has users?** Root: **yes**. The FK is `SET NULL`, so those users silently lose their role and permissions (P2-28a). Core: **no**, refused with 409 `ROLE_IN_USE` (the count query runs first).
+- **Are names and permission lists validated?** Root: **no**. Name is only truthiness-checked, permission ids are not checked for existence, and a non-array `permissionIds` becomes `[]`, silently clearing the role (P1-8). Core: **yes**. Shape, length, and pattern are validated; unknown ids are refused (422). Note: "known resource:action values only" — core checks that a permission id exists in `orycms_permissions`, and since that table is seeded from the matrix, that means known `resource:action` pairs. The name field itself is free text by pattern, not an enum.
+- **Do list/get responses expose anything beyond role data?** Neither tree. List returns `id, name, description`; permission lists return `id, name, resource, action`. Tested: explicit columns, and exact key sets on the response rows.
+
+**3. Query construction:** every SQL value is bound (`$n`); column and table names are fixed literals. The permission-existence check fetches the full permission list and matches ids in memory, so no id is ever put into SQL text. The delete-with-users count uses one bound id.
+
+**4. Error paths:** every core route now uses the shared `safeRouteError`, which passes through only deliberate status errors and returns a generic `500 INTERNAL_ERROR` for anything else, with the detail logged redacted. The same helper now serves `database.ts` (refactored, same behaviour). Root's shared `toErrorResponse` still leaks (P2-25/P1 scheduled before the Neon check).
+
+**5. Test-first evidence (real output, before the fix):** `roles.test.ts` with `database.test.ts` → `31 failed | 38 passed (69)`. The 31 failures were all the gaps above: 6 body-validation cases (name shape, length, description, malformed JSON), 5 permission-list shape cases, the unknown-id case, the two escalation cases, 11 built-in-role cases (5 names × PATCH, 5 × DELETE, plus PUT), the self-role cases (2), delete-with-users, and 3 driver-error leak cases. The 38 that passed on the unchanged code: 401 and 403 on every route, the success paths, the explicit-column checks, the mixed-set allowed case, the manage-grant case, and the database tests.
+
+**Post-fix evidence:** `roles.test.ts` + `database.test.ts` → `69 passed (69)`; full core `968 passed (968)`.
+
+**6. Changed files**
+
+- `packages/core/src/next/routes/roles.ts`: validation, escalation check, built-in and self-role protection, delete-with-users guard, unique-name mapping, shared error helper.
+- `packages/core/src/next/route-errors.ts` (new, internal): shared `safeRouteError`, `redactDetail`, `logRouteDetail`.
+- `packages/core/src/next/routes/database.ts`: now uses the shared helper (no behaviour change; tests still pass).
+- `packages/core/src/next/__tests__/roles.test.ts` (new): 50 tests.
+- `internal/PROGRESS.md`: this entry, the decisions, the U1-3.6 row, P1-8, P2-28, P2-29.
+
+**7. Quality gate (real output)**
+
+- `packages/core`: typecheck rc=0 (0 TS errors). `npx vitest run` → `Test Files 47 passed (47)`, `Tests 968 passed (968)`. Build rc=0. Scoped eslint rc=0.
+- Root: typecheck rc=0. Lint rc=1, **212 errors, same as baseline**; none in touched files (the roles hits are root's own pre-existing `app/api/orycms/roles/route.ts` and repository tests). `npm test` rc=0 → `Test Files 60 passed (60)`, `Tests 1371 passed (1371)`. `npm run build` rc=0.
+- Housekeeping: root typecheck regenerated `tsconfig.tsbuildinfo`; restored from `HEAD` with `git show` (read-only).
+
+**8. Not done / UNVERIFIED**
+
+- **Not done:** dispatcher registration (U1-3.11); root thin-wrap (fixes P1-8 and P2-28 there); the `setOryCMSRolePermissions` transaction (P2-28b).
+- **UNVERIFIED:** the escalation and silent-clear behaviour of root were shown by reading the code and by the core tests, not by calling root against a database. The `SET NULL` behaviour assumes the migration planner emitted the default `SET NULL` for `orycms_users.roleId`, which I inferred from `field.mapper.ts` and did not check in a live schema. Whether any existing deployment already has users on a deleted role.
+- **Behaviour changes in core:** PATCH and DELETE on built-in roles are now 409; PUT permissions now 422s on non-array input (root silently cleared); the caller cannot grant permissions it lacks (403); deleting a role with users is 409. Each is listed as an owner decision in P2-29 except the 422 and 403 cases, which are the fix itself.
+
+**Suggested branch (not created):** `fix/roles-route-escalation-and-validation`
+**Suggested commit message (generic):** `fix(core): validate roles input, block escalation and built-in role changes`
+
+### 2026-10-06 — U1-3.5 partial: database routes parity, driver-detail leak fix, tests (working tree, uncommitted — no branch created)
+
+**Scope:** database routes only. Root `orycms/` and `app/` NOT changed. Nothing registered in `ORYCMS_ROUTES`. No version bumps, publish, or public export changes. No database touched; tests mock auth/RBAC, the bootstrap installer, and the pool.
+
+**Lint baseline before starting:** `npm run lint` at root → `213 problems (213 errors, 0 warnings)`, exit 1. Final: `212 problems`, exit 1. The drop is one pre-existing prettier error in `packages/core/src/next/routes/database.ts`, removed by the rewrite. No new errors.
+
+**0. Decisions recorded** (Decisions section), and the two skipped API-key placeholder tests deleted from `settings.test.ts`. The U1-3.4 row and P2-24 were updated to match.
+
+**1. Parity table — root `app/api/orycms/database/**` vs `packages/core/src/next/routes/database.ts`**
+
+| Route | Permission | Validation | Success response | Status codes (after this task) |
+|---|---|---|---|---|
+| `GET database/migrations` | `migrations:read` | none (no input) | `200 {success, data:[{migrationId,name,appliedAt,durationMs}]}` | 200, 401, 403, 500 |
+| `POST database/migrations` | `migrations:create` (Owner and Admin hold it; Editor and below do not) | none — **body and query string are never read** | `200 {success, data:{install, seeded}}`; audit row `migrate` | 200, 401, 403, 500 (generic) |
+| `POST` failed install | same | same | root: `500` with `success:true` and driver text in body. **Core: `500 {success:false, error:{code:"SCHEMA_INSTALL_FAILED", failed:[{migrationId,name}]}}`, no driver text** | see P2-26 |
+| `GET database/schemas` | `migrations:read` | none | `501 NOT_IMPLEMENTED` in both trees | 401, 403, 501 |
+
+Root has no route-level test for these endpoints, so there was nothing to port.
+
+**2. What the write route does**
+
+- `POST database/migrations` calls `bootstrapOryCMS()`. That opens its own connection through the PostgreSQL adapter, installs the core schema migration by migration (11 system tables, each recorded in `orycms_migrations`; already-applied IDs are skipped), then syncs the default roles and the permission matrix (`syncOryCMSDefaultRoles`/`syncOryCMSDefaultPermissions`). It then writes an audit row (`migrate`) with the applied IDs.
+- **Who can trigger it:** the route requires `migrations:create` after a valid session. By the default matrix, Owner and Admin hold `migrations` as `manage`. Editor, Author, and Viewer do not. Unauthenticated and low-privilege callers get 401 and 403 and never reach the install (tested).
+- **Input:** the install takes **no request input**. It never accepts SQL, table names or file paths from the body or query string. The route does not parse the body at all. Tested by sending `sql`, `table`, `path` in both places and asserting the installer is called with no arguments. Nothing is copied from root that would change this.
+
+**3. Error and response review — both trees**
+
+- **Root leaks, two ways (logged, not copied):**
+  1. **P2-26:** the failed-install response returns the full install result, including `failed[].error`, which the adapter fills with `String(err)` (raw driver text). Root also returns it with `success:true` on a 500.
+  2. **P2-25:** root's `toErrorResponse` (`lib/route-guards.ts`) returns the raw `message` with status 400 for any thrown error that has a string `code`. Postgres driver errors always have one, so a connection failure in any route that goes through that mapper can return connection detail to the caller. This is a shared pattern, not specific to this route, which makes it the highest-priority finding here (P1).
+- **Core:** `packages/core/src/next/routes/database.ts` does not use `toErrorResponse` for its own errors. It uses a local `databaseError()` that passes through only deliberate status errors (those with a numeric `statusCode`, such as auth and permission failures) and returns a generic `500 INTERNAL_ERROR` for everything else. Detail goes to `console.error` with URLs and `password=` values redacted.
+- **Residual risk (UNVERIFIED):** the redaction covers URL-shaped and `password=`-shaped text only. A driver message that puts a credential in some other form would be logged unredacted. It is server-side only, but the log line is not proven clean.
+
+**4. Query construction:** the only SQL in these routes is the static `SELECT` over `orycms_migrations`, with a fixed `ORDER BY`. No user input is interpolated. The install is parameter-free from the route's side.
+
+**5. Atomicity:** the install is **not atomic** (P2-27). Each migration commits on its own, so a partial install is possible. That is already scheduled as U4-3 (P2-12). This task only makes it visible and does not change it.
+
+**6. Test-first evidence (real output, before the fix):** `database.test.ts`, 19 tests. **5 failed**, all leaks: the list route returned the driver message (connection string included); a failed install returned the driver text in the body; the failed-install log contained the password; a thrown driver error (with a SQLSTATE `code`) returned its message as a 400; the list-route log contained the password. **14 passed on the unchanged code:** 401 and 403 on both verbs, the success paths, the audit row, the ignored-input test, the parse-free test, a plain thrown error (already generic), the schemas 501 stub, and the credential-text check on success bodies.
+
+**Post-fix evidence:** `Tests 19 passed (19)`, then full core `918 passed (918)`.
+
+**7. Changed files**
+
+- `packages/core/src/next/routes/database.ts`: local `databaseError()` and `redact()`; failed-install envelope; a comment that the body and query are never read.
+- `packages/core/src/next/__tests__/database.test.ts`: new, 19 tests.
+- `packages/core/src/next/__tests__/settings.test.ts`: the two skipped API-key placeholder tests deleted.
+- `internal/PROGRESS.md`: this entry, four Decisions rows, the U1-3.5 row, the U1-3.4 row and P2-24 text, new P2-25/26/27.
+
+**8. Quality gate (real output)**
+
+- `packages/core`: typecheck rc=0 (0 TS errors). `npx vitest run` → `Test Files 46 passed (46)`, `Tests 918 passed (918)`. Build rc=0. Scoped eslint on all touched files rc=0.
+- Root: typecheck rc=0. Lint rc=1, **212 errors** (baseline 213, none new; the one dropped was in `packages/core`'s `database.ts`). None in touched files. `npm test` rc=0 → `Test Files 60 passed (60)`, `Tests 1371 passed (1371)`. `npm run build` rc=0.
+- Housekeeping: root typecheck regenerated `tsconfig.tsbuildinfo`; restored from `HEAD` with `git show` (read-only).
+
+**9. Not done / UNVERIFIED**
+
+- **Not done:** dispatcher registration (U1-3.11); root thin-wrap (fixes P2-25/P2-26 there); atomic install (U4-3 / P2-27).
+- **UNVERIFIED:** live behaviour against a real database, including what `pg` actually puts in an error for a real connection failure. Redaction completeness beyond URL and `password=` text. Whether any production log already holds unredacted driver text from before this change.
+- **Behaviour change in core:** a failed install now returns `success:false` with status 500 and no driver text, not root's `success:true` with the detail. Clients that parsed the old body would need updating when thin-wrap lands.
+
+**Suggested branch (not created):** `fix/database-route-error-detail`
+**Suggested commit message (generic):** `fix(core): keep driver and connection detail out of database route responses`
+
+### 2026-10-06 — U1-3.4 partial: settings and API-key routes parity, PATCH validation, tests (working tree, uncommitted — no branch created)
+
+**Scope:** settings routes only. Root `orycms/` and `app/` NOT changed. Nothing registered in `ORYCMS_ROUTES` (owner decision). No version bumps, publish, or public export changes. No database touched; tests mock auth/RBAC and the pool.
+
+**Lint baseline before starting:** `npm run lint` at root → `213 problems (213 errors, 0 warnings)`, exit 1. (The 2026-10-06 U1-3.3 log entry said 212; that was the "potentially fixable" line, not the total. The total was 213.) Final: still 213, none in files this task touched.
+
+**0. Decisions recorded** (Decisions section): modules stay unregistered until U1-3.11; unknown query params ignored (P2-20 decided); P2-19 fixed at thin-wrap; P2-21 handled in U1-3.7. The audit test that was skipped for P2-20 now asserts "ignored" (`audit.test.ts`, 17 tests, all active).
+
+**1. Parity table — root `app/api/orycms/settings/**` vs `packages/core/src/next/routes/settings.ts`**
+
+| Route | Permission | Root validation | Core validation (after this task) | Success response | Status codes |
+|---|---|---|---|---|---|
+| `GET settings` | `settings:read` | none (lists all rows) | same | `200 {success, data:[{key,value,description}]}` | 401, 403, 500 |
+| `PATCH settings` | `settings:update` | key required (422); **nothing else**; malformed JSON → 500 | JSON object required (422); key required + pattern `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` (422); value required (422); description null/string ≤1000 (422); malformed JSON → 422 | `200` setting record; audit row written (`update`, `settings`, key) in both trees | 401, 403, 422, 500 |
+| `GET settings/api-keys` | `settings:read` | 501 stub | 501 stub | `501 NOT_IMPLEMENTED` | 401, 403, 501 |
+| `POST settings/api-keys` | `settings:create` | 501 stub | 501 stub | `501` | 401, 403, 501 |
+| `DELETE settings/api-keys/:id` | `settings:delete` | 501 stub (awaits params first) | 501 stub | `501` | 401, 403, 501 |
+
+Root has no route-level tests for settings. Settings engine SQL is identical in both trees (`settings.repo.ts`, checked by grep of the query text).
+
+**2. API-key review (what root does)**
+
+- **Generation:** none. Root has no key generator. Confirmed by repo-wide grep: the only API-key code is the 501 stubs and `orycms/services/settings.service.ts`, whose three methods throw `"Not implemented"` and are never called.
+- **Storage:** none. No table in `core.collections.ts` or the migration planner holds keys.
+- **Return:** none. Root does not return key material from any route.
+- **Revoke permission:** `DELETE` requires `settings:delete`; tested (403 without it).
+- **Conclusion:** root neither stores nor returns keys unsafely, because it does neither. There is nothing to match in `packages/core`. The owner's requirements (CSPRNG, shown once, hashed at rest, prefix-only listing) are **unimplemented**, logged as **P2-24** (P1), and need a design-first feature task. Two skipped placeholder tests mark them.
+
+**3. Secret-exposure review**
+
+- SMTP settings come from env/config (`SMTP_*`, `email.options`), not `orycms_settings`. No code path in the repo writes SMTP values to that table. The CLI seeder writes only `site_name`.
+- No token hash, session value, or password hash is written to `orycms_settings` anywhere in the repo.
+- But `GET settings` returns every row, and PATCH accepts any value from any `settings:update` holder. That is a policy gap, not a current leak: logged as **P2-23** (owner decision).
+- Response bodies in the tests contain no secret-like text (asserted on the 501 bodies).
+
+**4. Query construction:** the list query has no parameters. `getOryCMSSetting` binds `$1`; `setOryCMSSetting` binds `$1`–`$3` and passes the value as `JSON.stringify`'d text. The key is also validated by pattern before it reaches SQL. No user input reaches an identifier or raw SQL text. A hostile-key test confirms rejection with no query.
+
+**5. Test-first evidence (real output, before the fix):** 41 tests across both files, `7 failed | 32 passed | 2 skipped`. The 7 failures were all PATCH validation cases: malformed JSON (500 instead of 422), non-string key, hostile key, 129-character key, missing value, non-string description, 1001-character description. Everything else passed on the unchanged code: 401/403 on both verbs, GET shape and explicit columns, the audit write, bound JSON value, unknown well-formed key accepted, missing key 422, and all five API-key stub responses.
+
+**Post-fix evidence:** `Tests 39 passed | 2 skipped (41)` for the two files, then full core `899 passed | 2 skipped (901)`.
+
+**6. Changed files**
+
+- `packages/core/src/next/routes/settings.ts`: PATCH validation (422 for each case above), with the JSON-body check moved inside the try.
+- `packages/core/src/next/__tests__/settings.test.ts`: new, 24 tests (22 active, 2 skipped for the API-key feature).
+- `packages/core/src/next/__tests__/audit.test.ts`: the skipped unknown-parameter test replaced with an "ignored" test.
+- `packages/core/src/audit/audit.repo.ts`, `packages/core/src/next/routes/audit.ts`: from U1-3.3, unchanged in this task.
+- `internal/PROGRESS.md`: this entry, the Decisions rows, the U1-3.4 row, P2-20 (decided), new P2-22/23/24.
+
+**7. Quality gate (real output)**
+
+- `packages/core`: typecheck rc=0. `npx vitest run` → `Test Files 45 passed (45)`, `Tests 899 passed | 2 skipped (901)`. Build rc=0. Scoped eslint on all changed files rc=0.
+- Root: typecheck rc=0. Lint rc=1, **213 errors, same as baseline**, none in touched files (the other settings/audit hits are pre-existing in `app/api/orycms/settings/route.ts` and index files I did not touch). `npm test` rc=0 → `Test Files 60 passed (60)`, `Tests 1371 passed (1371)`. `npm run build` rc=0.
+- Housekeeping: root typecheck regenerated `tsconfig.tsbuildinfo`; restored from `HEAD` with `git show` (read-only).
+
+**8. Not done / UNVERIFIED**
+
+- **Not done:** dispatcher registration (deferred to U1-3.11 by decision); root thin-wrap (P2-22/P2-19 apply then); API-key feature (P2-24, new task).
+- **UNVERIFIED:** whether any production database already holds a secret-like value in `orycms_settings`. I was told not to query the database, so that is unchecked. Also not run: a live HTTP server, and root's real response for malformed JSON (inferred from `request.json()` throwing into a generic 500 handler; not executed).
+- **Behaviour change:** PATCH now rejects some inputs root accepts (e.g. a non-string key, a missing value). Clients that relied on those will get 422. None are known in this repo.
+
+**Suggested branch (not created):** `fix/settings-route-validation`
+**Suggested commit message (generic):** `fix(core): validate settings update body and add settings route tests`
+
+### 2026-10-06 — U1-3.3 partial: audit route parity, tests, and paging validation in `packages/core` (working tree, uncommitted — no branch created)
+
+**Scope (owner instruction):** audit route only. Root `orycms/` and `app/` were NOT changed. Nothing registered in `ORYCMS_ROUTES`. No version bumps, no publish, no public export changes. No database was touched; every test mocks the auth/RBAC boundaries and the pool.
+
+**1. Parity table — root `app/api/orycms/audit/route.ts` vs `packages/core/src/next/routes/audit.ts`**
+
+| Aspect | Root | Core (after this task) |
+|---|---|---|
+| Path / method | `GET /api/orycms/audit` | `GET audit` (under the dispatcher's `/api/orycms` base) — same path, method |
+| Permission | `guardOryCMS(req, "audit", "read")` | identical |
+| Query: `userId`, `resource`, `action` | `searchParams.get(...) ?? undefined`, bound as SQL parameters | identical |
+| Query: `limit`, `offset` | `Number(...)` with no check — non-numeric → `NaN` reaches SQL | **400 `VALIDATION_ERROR`** for non-integer input (changed) |
+| Limit/offset clamping (repo) | `limit` clamped to 1–200 (default 50); `offset` floored at 0, **no upper bound** | `limit` unchanged; `offset` now capped at `Number.MAX_SAFE_INTEGER` (changed) |
+| Sort | none — `ORDER BY "createdAt" DESC` fixed | identical |
+| Success response | `200 {success:true, data:[rows]}` | identical |
+| Errors | guard → `401 UNAUTHORIZED` / `403 FORBIDDEN`; anything else → `500 INTERNAL_ERROR` | identical, plus the new 400 |
+| Registered in dispatcher | n/a (Next file route) | **No.** `ORYCMS_ROUTES` still lists auth + auth-token routes only. Left unregistered per "register nothing new". `dispatcher.test.ts`'s "does not ship advanced module routes" is unchanged and passing. |
+
+Root has **no route-level test** for this endpoint (`app/api/orycms/audit/` contains only `route.ts`), so there was nothing to port. The repository test (`audit.repo.test.ts`) is byte-identical in both trees and was already present.
+
+**2. Query-construction review (both trees)**
+
+- All three filter values (`userId`, `resource`, `action`) are bound as `$n` parameters. Column names are fixed string literals in the SQL. No user input reaches an identifier or raw SQL text. **No SQL-injection gap found.**
+- `limit`/`offset` are bound as parameters too, but were not validated: non-numeric input became `NaN`, and out-of-range `offset` produced a value Postgres rejects. That is a robustness gap, fixed in `packages/core` (small change, within the task's rule). Root logged as **P2-19**.
+- No sort parameter exists, so the sort test checks that a sort value is ignored and never reaches SQL.
+- Unknown query parameters are silently ignored. Changing that is a REST contract decision, so it's logged as **P2-20** and its test is skipped.
+
+**3. Secret-exposure review**
+
+- The read path selects an explicit column list (`id, userId, action, resource, resourceId, metadata, ipAddress, userAgent, createdAt`), never `SELECT *`. The test asserts this.
+- Every `recordOryCMSAuditLog` call in both trees was checked. `settings` records the setting **key** only, not its value, so SMTP values never reach the audit table through that path. Token-flow rows record `email`, `found`, `emailed`, `roleId`; no hash, token, password or session value is written. Logged as **P2-21**: the `forgot-password` rows hold the requested email address, which is a privacy question for the owner, not a credential leak.
+
+**4. Tests — `packages/core/src/next/__tests__/audit.test.ts` (new, 17 tests: 16 active + 1 skipped)**
+
+- Authentication/authorisation: unauthenticated → 401 with no query; authenticated without `audit:read` → 403 with no query.
+- Shape: 200 `{success, data}`; explicit column list; response contains no `password` / `passwordHash` / `tokenHash` / `token_hash` / `sessionToken` / `smtp` / `secret` text.
+- Pagination: defaults (50/0); huge limit clamped to 200; negative limit → 1; negative offset → 0; oversized offset → safe integer; non-numeric limit → 400 with no query; `10abc` → 400; `1.5` → 400; non-numeric offset → 400 with no query.
+- Filters/sort: hostile filter value is bound as a parameter and never appears in SQL text; a `sort=` value containing SQL is ignored and `ORDER BY` stays fixed.
+- Skipped: unknown query parameters → 400 (awaiting owner decision, P2-20).
+
+**Test-first evidence (real output, pre-fix run):** `Tests 5 failed | 11 passed | 1 skipped (17)`. The failures shown were `limit=abc`, `limit=10abc`, `limit=1.5` and `offset=abc`, each returning `expected 200 to be 400`. The fifth failure was cut off by my output truncation, so I did not capture its name; by elimination it is the oversized-offset test, which is the only other test that the old code could fail. **That attribution is inferred, not captured.**
+
+**Post-fix evidence:** `npx vitest run src/next/__tests__/audit.test.ts src/audit` → `Tests 20 passed | 1 skipped (21)`.
+
+**5. Changed files**
+
+- `packages/core/src/next/routes/audit.ts` — added an `intParam()` helper (throws `VALIDATION_ERROR`/400 for non-integer input, returns `undefined` for empty/absent) and used it for `limit`/`offset`.
+- `packages/core/src/audit/audit.repo.ts` — `offset` capped at `Number.MAX_SAFE_INTEGER`.
+- `packages/core/src/next/__tests__/audit.test.ts` — new.
+- `internal/PROGRESS.md` — this entry, the U1-3.3 row, and new rows P2-19/20/21.
+
+Behaviour change to note: `limit=1e2` used to be accepted (`Number("1e2")` = 100) and is now a 400. No client in this repo is known to send that form (unverified).
+
+**6. Quality gate (real output)**
+
+- `packages/core`: `npm run typecheck` rc=0. `npx vitest run` → `Test Files 44 passed (44)`, `Tests 876 passed | 1 skipped (877)`. `npm run build` rc=0.
+- Root: `npm run typecheck` rc=0. `npm test` rc=0 → `Test Files 60 passed (60)`, `Tests 1371 passed (1371)`. `npm run build` rc=0 (Next.js production build completed). `npm run lint` **rc=1, 212 errors** — none in the three audit files touched by this task (verified by grep on the lint output and a scoped `eslint` run on the changed files, which is clean). The other errors are pre-existing, in other files; I did not capture a pre-change baseline count, so I can't say the total is unchanged.
+- Housekeeping: root `npm run typecheck` regenerated the tracked `tsconfig.tsbuildinfo`. Restored it from `HEAD` with `git show HEAD:tsconfig.tsbuildinfo > …` (read-only git).
+
+**7. Not done / UNVERIFIED**
+
+- **Not done:** registration in `ORYCMS_ROUTES`; root thin-wrap of `app/api/orycms/audit/route.ts`. Both were deliberately skipped per this task's instructions. U1-3.3 therefore stays **PARTIAL**, not DONE.
+- **UNVERIFIED:** how root behaves for a malformed `limit` against a real database (inferred from reading `pg`'s parameter handling, not run). Whether `orycms_audit_logs."userId"` is a `uuid` column, which affects what a non-UUID `userId` does (not tested). No end-to-end HTTP run against a live server.
+- **Lint:** `npm run lint` still fails at root (pre-existing, see above). Not caused by this task, not fixed.
+
+**Suggested branch (not created):** `fix/audit-route-paging-validation`
+**Suggested commit message (generic, not for owner to paste verbatim):** `fix(core): validate audit list paging parameters and add audit route tests`
 
 ### 2026-10-05 — P0-17: SMTP-only email system (working tree, uncommitted — no branch created)
 - **Scope:** `orycms/`+`app/` (root) and `packages/core/src` only. Did not run anything against a real database or send a real email (every test mocks the `nodemailer` dynamic import or `sendOryCMSEmail` directly). Did not print any `.env` value or credential in this report or in any code/test. No git write command was run. Did not edit `README.md` (left its pre-existing stale `EMAIL_*` block alone, per instruction).
@@ -542,3 +880,16 @@ Deferred / backlog, genuinely untouched by this plan (real future feature work, 
 | 2026-10-05 (**confirmed**) | Email delivery goes through SMTP only (via `nodemailer`). The other provider implementations (Resend, SendGrid, SES, Mailgun, Postmark) are removed at the end of this task, after the SMTP path is implemented and tested — as a separate, clearly marked step, and only once confirmed nothing depends on them. | Per the owner's instruction; simplifies the email system to the one transport actually planned for use. | User |
 | 2026-10-05 (**confirmed**) | SMTP config is read from `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, with an optional override via `orycms.config.ts`'s `email.options` block. The SMTP password is never logged, never returned by any API, and never placed in an error message (errors are sanitized to strip the password value before being thrown or logged). | Per the owner's instruction. | User |
 | 2026-10-05 (**confirmed**) | Auth links (reset/invite/activation) are delivered ONLY by email — or, in non-production with no SMTP configured, printed to the server console — and are never put in an HTTP response, under any circumstances. | Per the owner's instruction; reaffirms the already-merged P0-16 fix's intent (now live on `main` via PR #25) now that SMTP is the only real transport. | User |
+| 2026-10-06 (**confirmed by owner**) | Audit and the other ported route modules stay **unregistered** in the dispatcher (`ORYCMS_ROUTES`) until U1-3.11, where all are registered together and the public surface is designed. | Registering per module would expose a partial, unreviewed API surface. U1-3.11 owns the public-surface decision. | Owner |
+| 2026-10-06 (**confirmed by owner**) | Unknown query parameters on list routes are **ignored**, not rejected (closes P2-20 as a decision). The audit test that was skipped for this is replaced by one asserting they are ignored. | Rejecting them would change the REST contract. Ignoring is the current behaviour in both trees. | Owner |
+| 2026-10-06 (**confirmed by owner**) | P2-19 (root paging gap) is fixed when root becomes a thin wrapper, not before. | Root stays untouched until its thin-wrap task, per the standing instruction. | Owner |
+| 2026-10-06 (**confirmed by owner**) | P2-21: do not store raw emails for unknown accounts in audit rows. Handled in the users task (U1-3.7), not in the audit task. | The fix changes the write path for `forgot-password`, which belongs with the users module. | Owner |
+| 2026-10-06 (**confirmed by owner**) | API keys are **out of scope for the beta**. The 501 stubs are removed in the cleanup phase, and the README must not claim API keys (P2-24). | No key storage exists in either tree; shipping stubs that promise a feature is worse than omitting it. | Owner |
+| 2026-10-06 (**confirmed by owner**) | Settings hold **non-secret values only**. Secrets live in env vars. A later small task documents this and rejects secret-looking keys on write (P2-23). | Keeps the settings table safe to list and read under `settings:read`. | Owner |
+| 2026-10-06 (**confirmed by owner**) | P2-22 (root settings PATCH validation gaps) is fixed at thin-wrap, not before. | Same rule as P2-19: root stays untouched until its thin-wrap task. | Owner |
+| 2026-10-06 (**confirmed by owner**) | The two skipped API-key placeholder tests in `settings.test.ts` (hashed storage, shown once) are **deleted**. The feature is tracked as P2-24. | A skipped placeholder reads as coverage that does not exist. | Owner |
+| 2026-10-06 (**confirmed by owner**) | P2-25 and P2-26 become their own small task: fix root's error mapper and failed-install response, with tests. It is scheduled **before the Neon browser check**. | Both are live leaks in root; they should not wait for the thin-wrap work. | Owner |
+| 2026-10-06 (**confirmed by owner**) | P2-27 (non-atomic install) stays in U4-3. | Atomicity is a schema-design change, which belongs with the other install work. | Owner |
+| 2026-10-06 (**accepted by owner**) | A failed install now returns `success:false` with status 500. | Matches the error envelope every other route uses. Accepted as a behaviour change. | Owner |
+| 2026-10-06 (**confirmed by owner**) | Built-in roles are **fully locked** in the beta: no rename, no delete, no permission changes. The caller's own role cannot be edited or deleted (P2-29). | Safest default while the role model is still settling; loosening later is a deliberate, reviewed change. | Owner |
+| 2026-10-06 (**confirmed by owner**) | P1-8 (root roles gaps) is fixed at thin-wrap. P2-28 is scheduled later. | Root roles routes are thin-wrapped in U1-3.6's wrap step; P2-28 is lower priority than the escalation fix. | Owner |

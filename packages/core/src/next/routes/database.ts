@@ -1,9 +1,10 @@
 import { getOryCMSPool } from "@/lib/db";
 import { bootstrapOryCMS } from "@/core";
-import { guardOryCMS, toErrorResponse, oryJsonOk } from "@/lib/route-guards";
+import { guardOryCMS, oryJsonOk } from "@/lib/route-guards";
 import { recordOryCMSAuditLog } from "@/audit";
 import type { OryCMSRoute } from "../dispatcher";
 import { jsonError } from "../http";
+import { logRouteDetail, safeRouteError } from "../route-errors";
 
 const listMigrations: OryCMSRoute = {
   method: "GET",
@@ -19,7 +20,7 @@ const listMigrations: OryCMSRoute = {
       );
       return oryJsonOk(result.rows);
     } catch (err) {
-      return toErrorResponse(err);
+      return safeRouteError("database.migrations.list", err);
     }
   },
 };
@@ -30,6 +31,7 @@ const runMigrations: OryCMSRoute = {
   handler: async ({ request }) => {
     try {
       const session = await guardOryCMS(request, "migrations", "create");
+      // The request body and query string are never read: the install takes no input.
       const result = await bootstrapOryCMS();
       await recordOryCMSAuditLog({
         userId: session.userId,
@@ -39,9 +41,29 @@ const runMigrations: OryCMSRoute = {
         ipAddress: request.headers.get("x-forwarded-for"),
         userAgent: request.headers.get("user-agent"),
       });
-      return oryJsonOk(result, result.install.success ? 200 : 500);
+
+      if (!result.install.success) {
+        for (const failure of result.install.failed) {
+          logRouteDetail(
+            `database.migrations.run: migration ${failure.migrationId} failed`,
+            failure.error,
+          );
+        }
+        return Response.json(
+          {
+            success: false,
+            error: {
+              code: "SCHEMA_INSTALL_FAILED",
+              message: "Database schema install failed. See server logs.",
+              failed: result.install.failed.map(({ migrationId, name }) => ({ migrationId, name })),
+            },
+          },
+          { status: 500 },
+        );
+      }
+      return oryJsonOk(result);
     } catch (err) {
-      return toErrorResponse(err);
+      return safeRouteError("database.migrations.run", err);
     }
   },
 };
@@ -53,9 +75,13 @@ const listSchemas: OryCMSRoute = {
   handler: async ({ request }) => {
     try {
       await guardOryCMS(request, "migrations", "read");
-      return jsonError("NOT_IMPLEMENTED", "Database schema introspection is not yet implemented.", 501);
+      return jsonError(
+        "NOT_IMPLEMENTED",
+        "Database schema introspection is not yet implemented.",
+        501,
+      );
     } catch (err) {
-      return toErrorResponse(err);
+      return safeRouteError("database.schemas.list", err);
     }
   },
 };

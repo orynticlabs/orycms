@@ -17,21 +17,53 @@ const listSettings: OryCMSRoute = {
   },
 };
 
+/** Setting keys: letters, digits, `.`, `_`, `-`; starts with a letter or digit; at most 128 characters. */
+const SETTING_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const SETTING_DESCRIPTION_MAX = 1000;
+
+function invalid(message: string): Error {
+  return statusError("VALIDATION_ERROR", message, 422);
+}
+
 const updateSetting: OryCMSRoute = {
   method: "PATCH",
   pattern: "settings",
   handler: async ({ request }) => {
     try {
       const session = await guardOryCMS(request, "settings", "update");
-      const body = (await request.json()) as {
-        key?: string;
-        value?: unknown;
-        description?: string | null;
-      };
-      if (!body.key) {
-        return toErrorResponse(statusError("VALIDATION_ERROR", "Setting key is required.", 422));
+      let parsed: unknown;
+      try {
+        parsed = await request.json();
+      } catch {
+        throw invalid("Request body must be valid JSON.");
       }
-      const setting = await setOryCMSSetting(body.key, body.value, body.description ?? null);
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw invalid("Request body must be a JSON object.");
+      }
+      const body = parsed as { key?: unknown; value?: unknown; description?: unknown };
+      if (body.key === undefined || body.key === "") {
+        throw invalid("Setting key is required.");
+      }
+      if (typeof body.key !== "string" || !SETTING_KEY_PATTERN.test(body.key)) {
+        throw invalid("Setting key is invalid.");
+      }
+      if (body.value === undefined) {
+        throw invalid("Setting value is required.");
+      }
+      if (
+        body.description !== undefined &&
+        body.description !== null &&
+        (typeof body.description !== "string" || body.description.length > SETTING_DESCRIPTION_MAX)
+      ) {
+        throw invalid(
+          `Setting description must be a string of at most ${SETTING_DESCRIPTION_MAX} characters.`,
+        );
+      }
+      const setting = await setOryCMSSetting(
+        body.key,
+        body.value,
+        (body.description as string | null | undefined) ?? null,
+      );
       await recordOryCMSAuditLog({
         userId: session.userId,
         action: "update",

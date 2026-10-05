@@ -1,7 +1,8 @@
+import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getOryCMSPool } from "@/lib/db";
 import { bootstrapOryCMS } from "@/core";
-import { guardOryCMS, toErrorResponse, oryJsonOk } from "@/lib/route-guards";
+import { guardOryCMS, toErrorResponse, oryJsonOk, redactDetail } from "@/lib/route-guards";
 import { recordOryCMSAuditLog } from "@/audit";
 
 // GET /api/orycms/database/migrations — list applied core migrations
@@ -35,7 +36,26 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return oryJsonOk(result, result.install.success ? 200 : 500);
+    if (!result.install.success) {
+      // Driver text stays in the server log. The response names the failed migrations only.
+      for (const failure of result.install.failed) {
+        console.error(
+          `[orycms] database.migrations.run: migration ${failure.migrationId} failed: ${redactDetail(failure.error)}`,
+        );
+      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "SCHEMA_INSTALL_FAILED",
+            message: "Database schema install failed. See server logs.",
+            failed: result.install.failed.map(({ migrationId, name }) => ({ migrationId, name })),
+          },
+        },
+        { status: 500 },
+      );
+    }
+    return oryJsonOk(result);
   } catch (err) {
     return toErrorResponse(err);
   }

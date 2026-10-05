@@ -81,7 +81,7 @@ export async function listOryCMSAuditLogs(
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const limit = Math.min(Math.max(filter.limit ?? 50, 1), 200);
-  const offset = Math.max(filter.offset ?? 0, 0);
+  const offset = Math.min(Math.max(filter.offset ?? 0, 0), Number.MAX_SAFE_INTEGER);
   values.push(limit, offset);
 
   const result = await pool.query<OryCMSAuditLog>(
