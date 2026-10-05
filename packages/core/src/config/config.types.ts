@@ -40,20 +40,16 @@ export type OryCMSHooksConfig = {
   timeoutMs?: number;
 };
 
-export type OryCMSEmailProviderId =
-  | "resend"
-  | "smtp"
-  | "sendgrid"
-  | "ses"
-  | "mailgun"
-  | "postmark"
-  | "custom";
+// SMTP is the only real email transport OryCMS ships; "custom" lets a
+// developer supply their own send function for anything else.
+export type OryCMSEmailProviderId = "smtp" | "custom";
 
 export type OryCMSEmailConfig = {
   /**
    * Which provider to send through. When omitted (and no ORYCMS_EMAIL_PROVIDER
-   * env var is set), OryCMS runs in dev mode: token links are returned in the
-   * API response instead of being emailed.
+   * env var is set), auth links are printed to the server console outside
+   * production (never returned in an API response) and a warning is logged
+   * in production.
    */
   provider?: OryCMSEmailProviderId;
   /** Default From address, e.g. "OryCMS <no-reply@example.com>". */
