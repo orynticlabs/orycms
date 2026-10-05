@@ -3,7 +3,6 @@ export {
   SESSION_COOKIE,
   SESSION_MAX_AGE,
   OryCMSAuthError,
-  installOryCMSAuthSchema,
   hasOryCMSInitialUser,
   createOryCMSInitialOwner,
   authenticateOryCMSUser,
