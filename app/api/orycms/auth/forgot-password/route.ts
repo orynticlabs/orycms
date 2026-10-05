@@ -7,14 +7,18 @@ import { recordOryCMSAuditLog } from "@/audit";
 import { toErrorResponse, oryJsonOk } from "@/lib/route-guards";
 
 // POST /api/orycms/auth/forgot-password — public.
-// ALWAYS returns 200 regardless of whether the email exists (no user enumeration).
-// When the user exists, a reset token is created and emailed / returned.
+// ALWAYS returns 200 with an IDENTICAL body regardless of whether the email
+// exists (no user enumeration via status, message, or key presence). Links
+// are delivered by email only — never returned in this response, in any
+// environment.
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as { email?: string };
     const email = (body.email ?? "").toLowerCase().trim();
 
-    // Generic success response — identical whether or not the account exists.
+    // Generic success response — identical whether or not the account exists,
+    // and identical regardless of whether a reset link was emailed, printed
+    // to the dev console, or neither.
     const generic = oryJsonOk({
       message: "If an account exists for that email, a reset link has been sent.",
     });
@@ -48,12 +52,7 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     }).catch(() => {});
 
-    // In dev/no-provider mode we DO return the link so the flow is testable.
-    // (When a provider is configured, dispatch.link is null.)
-    return oryJsonOk({
-      message: "If an account exists for that email, a reset link has been sent.",
-      resetLink: dispatch.link,
-    });
+    return generic;
   } catch (err) {
     return toErrorResponse(err);
   }

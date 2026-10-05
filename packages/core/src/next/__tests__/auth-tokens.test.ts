@@ -161,36 +161,44 @@ describe("POST /auth/forgot-password", () => {
     expect(sendOryCMSEmail).not.toHaveBeenCalled();
   });
 
-  // ROOT WEAKNESS, logged in internal/PROGRESS.md, NOT fixed here (per instruction 5):
-  // root's known-email response always ADDS a `resetLink` key (null when a provider
-  // sent the email, the raw link string otherwise) that the unknown/missing-email
-  // response never includes. The two JSON bodies are therefore NOT byte-identical —
-  // key *presence* is itself a (minor) user-enumeration signal if a provider is
-  // configured. This test documents root's actual behavior faithfully; it does not
-  // claim the responses are indistinguishable.
-  it("known email, no provider configured: 200 with the SAME message text, PLUS a resetLink field root's unknown-email response omits", async () => {
-    queryImpl = (sql: string) => {
-      if (sql.includes("FROM orycms_users WHERE email"))
-        return { rows: [{ id: "u1", email: "owner@acme.io", status: "active", roleId: "r1" }] };
-      return { rows: [] };
-    };
-    const res = await handlers.POST(
-      req("/api/orycms/auth/forgot-password", { method: "POST", body: { email: "owner@acme.io" } }),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      success: boolean;
-      data: { message: string; resetLink: string | null };
-    };
-    expect(body.success).toBe(true);
-    expect(body.data.message).toBe(
-      "If an account exists for that email, a reset link has been sent.",
-    );
-    expect(typeof body.data.resetLink).toBe("string"); // dev mode: the raw link is returned
-    expect(sendOryCMSEmail).toHaveBeenCalledTimes(1);
+  it("known email, no provider configured, NODE_ENV=production: response body is IDENTICAL to the unknown-email response (no link anywhere)", async () => {
+    const PREV = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      queryImpl = (sql: string) =>
+        sql.includes("FROM orycms_users WHERE email")
+          ? { rows: [{ id: "u1", email: "owner@acme.io", status: "active", roleId: "r1" }] }
+          : { rows: [] };
+      const resKnown = await handlers.POST(
+        req("/api/orycms/auth/forgot-password", {
+          method: "POST",
+          body: { email: "owner@acme.io" },
+        }),
+      );
+      const bodyKnown = (await resKnown.json()) as unknown;
+
+      queryImpl = () => ({ rows: [] });
+      const resUnknown = await handlers.POST(
+        req("/api/orycms/auth/forgot-password", {
+          method: "POST",
+          body: { email: "ghost@acme.io" },
+        }),
+      );
+      const bodyUnknown = (await resUnknown.json()) as unknown;
+
+      expect(resKnown.status).toBe(resUnknown.status);
+      expect(bodyKnown).toEqual(bodyUnknown);
+      expect(bodyKnown).toEqual({
+        success: true,
+        data: { message: "If an account exists for that email, a reset link has been sent." },
+      });
+      expect(bodyKnown).not.toHaveProperty("data.resetLink");
+    } finally {
+      process.env.NODE_ENV = PREV;
+    }
   });
 
-  it("known email, provider configured (emailed): resetLink is null, not the raw link", async () => {
+  it("known email, provider configured and send() succeeds: generic response, no link field", async () => {
     sendOryCMSEmail.mockResolvedValue({ sent: true, provider: "resend" });
     queryImpl = (sql: string) =>
       sql.includes("FROM orycms_users WHERE email")
@@ -199,11 +207,16 @@ describe("POST /auth/forgot-password", () => {
     const res = await handlers.POST(
       req("/api/orycms/auth/forgot-password", { method: "POST", body: { email: "owner@acme.io" } }),
     );
-    const body = (await res.json()) as { data: { resetLink: string | null } };
-    expect(body.data.resetLink).toBeNull();
+    const body = (await res.json()) as unknown;
+    expect(body).toEqual({
+      success: true,
+      data: { message: "If an account exists for that email, a reset link has been sent." },
+    });
   });
 
-  it("a token is created ONLY for a real (found) user, and it is stored hashed — never the raw value", async () => {
+  it("provider configured and send() throws: response contains no link or token anywhere (whole body checked)", async () => {
+    sendOryCMSEmail.mockRejectedValue(new Error("provider outage"));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     queryImpl = (sql: string) =>
       sql.includes("FROM orycms_users WHERE email")
         ? { rows: [{ id: "u1", email: "owner@acme.io", status: "active", roleId: "r1" }] }
@@ -211,9 +224,40 @@ describe("POST /auth/forgot-password", () => {
     const res = await handlers.POST(
       req("/api/orycms/auth/forgot-password", { method: "POST", body: { email: "owner@acme.io" } }),
     );
-    const body = (await res.json()) as { data: { resetLink: string } };
-    const rawToken = new URL(body.data.resetLink).searchParams.get("token") as string;
-    expect(rawToken).toMatch(/^[0-9a-f]{64}$/); // 32 random bytes, hex
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as unknown;
+    expect(body).toEqual({
+      success: true,
+      data: { message: "If an account exists for that email, a reset link has been sent." },
+    });
+    expect(body).not.toHaveProperty("data.resetLink");
+    errorSpy.mockRestore();
+  });
+
+  it("a token is created ONLY for a real (found) user, and the response never contains the raw token (printed to dev console instead)", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    queryImpl = (sql: string) =>
+      sql.includes("FROM orycms_users WHERE email")
+        ? { rows: [{ id: "u1", email: "owner@acme.io", status: "active", roleId: "r1" }] }
+        : { rows: [] };
+    const res = await handlers.POST(
+      req("/api/orycms/auth/forgot-password", { method: "POST", body: { email: "owner@acme.io" } }),
+    );
+    const bodyText = JSON.stringify(await res.json());
+    expect(bodyText).toEqual(
+      JSON.stringify({
+        success: true,
+        data: { message: "If an account exists for that email, a reset link has been sent." },
+      }),
+    );
+
+    // Default test NODE_ENV is non-production, so the dev-only console print
+    // fires — use it to recover the raw token and confirm it's hashed at rest
+    // and absent from the response (not just absent from a top-level field).
+    const logged = logSpy.mock.calls.flat().join(" ");
+    const rawToken = (logged.match(/token=([0-9a-f]{64})/) ?? [])[1];
+    expect(rawToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(bodyText).not.toContain(rawToken);
 
     const insertCall = poolQuery.mock.calls.find(([sql]) =>
       String(sql).includes("INSERT INTO orycms_tokens"),
@@ -223,25 +267,67 @@ describe("POST /auth/forgot-password", () => {
     expect(params).not.toContain(rawToken); // only the hash goes to the DB
     const expectedHash = await sha256Hex(rawToken);
     expect(params).toContain(expectedHash);
+    logSpy.mockRestore();
   });
 
-  it("the raw token never appears in a console.log/console.error call during the flow", async () => {
+  it("the raw token never appears in a console.log/console.error call during the flow (NODE_ENV=production)", async () => {
+    const PREV = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    queryImpl = (sql: string) =>
-      sql.includes("FROM orycms_users WHERE email")
-        ? { rows: [{ id: "u1", email: "owner@acme.io", status: "active", roleId: "r1" }] }
-        : { rows: [] };
-    const res = await handlers.POST(
-      req("/api/orycms/auth/forgot-password", { method: "POST", body: { email: "owner@acme.io" } }),
-    );
-    const body = (await res.json()) as { data: { resetLink: string } };
-    const rawToken = new URL(body.data.resetLink).searchParams.get("token") as string;
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      queryImpl = (sql: string) =>
+        sql.includes("FROM orycms_users WHERE email")
+          ? { rows: [{ id: "u1", email: "owner@acme.io", status: "active", roleId: "r1" }] }
+          : { rows: [] };
+      await handlers.POST(
+        req("/api/orycms/auth/forgot-password", {
+          method: "POST",
+          body: { email: "owner@acme.io" },
+        }),
+      );
+      const allLoggedText = [...logSpy.mock.calls, ...errorSpy.mock.calls, ...warnSpy.mock.calls]
+        .flat()
+        .join(" ");
+      expect(allLoggedText).not.toMatch(/[0-9a-f]{64}/);
+    } finally {
+      process.env.NODE_ENV = PREV;
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
 
-    const allLoggedText = [...logSpy.mock.calls, ...errorSpy.mock.calls].flat().join(" ");
-    expect(allLoggedText).not.toContain(rawToken);
-    logSpy.mockRestore();
-    errorSpy.mockRestore();
+  it("no provider configured, NODE_ENV=development: no link in the response, link printed to the console marked development-only", async () => {
+    const PREV = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      queryImpl = (sql: string) =>
+        sql.includes("FROM orycms_users WHERE email")
+          ? { rows: [{ id: "u1", email: "owner@acme.io", status: "active", roleId: "r1" }] }
+          : { rows: [] };
+      const res = await handlers.POST(
+        req("/api/orycms/auth/forgot-password", {
+          method: "POST",
+          body: { email: "owner@acme.io" },
+        }),
+      );
+      const body = (await res.json()) as unknown;
+      expect(body).toEqual({
+        success: true,
+        data: { message: "If an account exists for that email, a reset link has been sent." },
+      });
+      expect(body).not.toHaveProperty("data.resetLink");
+
+      const logged = logSpy.mock.calls.flat().join(" ");
+      expect(logged).toMatch(/reset-password\?token=/);
+      expect(logged.toLowerCase()).toContain("development");
+    } finally {
+      process.env.NODE_ENV = PREV;
+      logSpy.mockRestore();
+    }
   });
 });
 
@@ -575,19 +661,57 @@ describe("POST /auth/invite", () => {
     expect(res.status).toBe(201);
     const body = (await res.json()) as {
       success: boolean;
-      data: { userId: string; email: string; emailed: boolean; inviteLink: string | null };
+      data: { userId: string; email: string; emailed: boolean };
     };
     expect(body.success).toBe(true);
     expect(body.data.userId).toBe("newuser1");
     expect(body.data.email).toBe("invitee@acme.io");
     expect(body.data.emailed).toBe(false);
-    expect(typeof body.data.inviteLink).toBe("string");
+    expect(body.data).not.toHaveProperty("inviteLink");
+    expect(JSON.stringify(body)).not.toMatch(/link/i);
 
     // Pending status, not immediately active.
     const insertUserCall = poolQuery.mock.calls.find(([sql]) =>
       String(sql).includes("INSERT INTO orycms_users"),
     );
     expect(insertUserCall?.[1]).toContain("pending");
+  });
+
+  it("invite never returns the link even in development — it's printed to the console instead", async () => {
+    const PREV = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      queryImpl = (sql: string) => {
+        if (sql.includes("FROM orycms_sessions"))
+          return { rows: [{ userId: "inviter1", email: "owner@acme.io", roleName: "Owner" }] };
+        if (sql.includes("orycms_permissions"))
+          return { rows: [{ resource: "users", action: "create" }] };
+        if (sql.includes("INSERT INTO orycms_users")) {
+          return {
+            rows: [{ id: "newuser1", email: "invitee@acme.io", status: "pending", roleId: null }],
+          };
+        }
+        return { rows: [] };
+      };
+      const res = await handlers.POST(
+        req("/api/orycms/auth/invite", {
+          method: "POST",
+          cookie: inviterCookie(),
+          body: { email: "invitee@acme.io" },
+        }),
+      );
+      expect(res.status).toBe(201);
+      const bodyText = JSON.stringify(await res.json());
+      expect(bodyText).not.toMatch(/link/i);
+
+      const logged = logSpy.mock.calls.flat().join(" ");
+      expect(logged).toMatch(/accept-invite\?token=/);
+      expect(logged.toLowerCase()).toContain("development");
+    } finally {
+      process.env.NODE_ENV = PREV;
+      logSpy.mockRestore();
+    }
   });
 
   it("audit-log failure propagates as a 500 even though the user/token were already created (matches root's unguarded call — see PROGRESS.md)", async () => {

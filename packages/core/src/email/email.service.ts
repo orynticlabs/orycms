@@ -38,9 +38,7 @@ export async function sendOryCMSEmail(
 }
 
 /** True when an email provider is configured (send mode), false in dev/link mode. */
-export async function isOryCMSEmailConfigured(
-  emailConfig?: OryCMSEmailConfig,
-): Promise<boolean> {
+export async function isOryCMSEmailConfigured(emailConfig?: OryCMSEmailConfig): Promise<boolean> {
   const config = emailConfig ?? (await loadEmailConfigSafe());
   return getOryCMSEmailProvider(config) !== null;
 }
@@ -49,8 +47,14 @@ async function loadEmailConfigSafe(): Promise<OryCMSEmailConfig | undefined> {
   try {
     const config = await loadOryCMSConfig();
     return config.email;
-  } catch {
-    // Config file may not exist (e.g. tests, first-run) — fall back to env-only.
+  } catch (err) {
+    // A missing config file (tests, first-run) is expected and falls back to
+    // env-only silently. A config file that EXISTS but fails to load/parse/
+    // validate is a real misconfiguration — log it so it's never silent.
+    console.error(
+      "[orycms] Failed to load orycms.config.ts; email provider config falls back to env-only:",
+      err instanceof Error ? err.message : "unknown error",
+    );
     return undefined;
   }
 }

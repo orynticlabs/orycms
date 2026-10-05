@@ -6,14 +6,18 @@ import { dispatchOryCMSTokenLink } from "@/auth/token-links";
 import { recordOryCMSAuditLog } from "@/audit";
 
 // POST /api/orycms/auth/invite — invite a new user (guarded: users:create)
-// Creates a pending account + invite token, then emails/returns the accept link.
+// Creates a pending account + invite token. The accept link is delivered by
+// email only — never returned in this response, in any environment.
 export async function POST(request: NextRequest) {
   try {
     const session = await guardOryCMS(request, "users", "create");
     const body = (await request.json()) as { email?: string; roleId?: string | null };
     if (!body.email) {
       return toErrorResponse(
-        Object.assign(new Error("Email is required."), { code: "VALIDATION_ERROR", statusCode: 422 }),
+        Object.assign(new Error("Email is required."), {
+          code: "VALIDATION_ERROR",
+          statusCode: 422,
+        }),
       );
     }
 
@@ -38,10 +42,7 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return oryJsonOk(
-      { userId: user.id, email, emailed: dispatch.emailed, inviteLink: dispatch.link },
-      201,
-    );
+    return oryJsonOk({ userId: user.id, email, emailed: dispatch.emailed }, 201);
   } catch (err) {
     return toErrorResponse(err);
   }

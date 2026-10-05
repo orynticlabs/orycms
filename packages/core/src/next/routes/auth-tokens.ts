@@ -51,9 +51,10 @@ const refresh: OryCMSRoute = {
   },
 };
 
-// POST /auth/forgot-password — public. ALWAYS 200 regardless of whether the email
-// exists (no user enumeration via status code/message — see PROGRESS.md for the one
-// real shape-based signal root still has, which this port deliberately replicates).
+// POST /auth/forgot-password — public. ALWAYS 200 with an IDENTICAL body
+// regardless of whether the email exists (no user enumeration via status,
+// message, or key presence). Links are delivered by email only — never
+// returned in this response, in any environment.
 const forgotPassword: OryCMSRoute = {
   method: "POST",
   pattern: "auth/forgot-password",
@@ -94,10 +95,7 @@ const forgotPassword: OryCMSRoute = {
         userAgent: request.headers.get("user-agent"),
       }).catch(() => {});
 
-      return oryJsonOk({
-        message: "If an account exists for that email, a reset link has been sent.",
-        resetLink: dispatch.link,
-      });
+      return generic;
     } catch (err) {
       return toErrorResponse(err);
     }
@@ -187,10 +185,11 @@ const activate: OryCMSRoute = {
 };
 
 // POST /auth/invite — guarded (users:create). Creates a pending account + invite
-// token. NOTE: the audit-log call below is NOT wrapped in .catch() — matching
-// root exactly (see PROGRESS.md: a failure here surfaces as a 500 even though the
-// user and token were already created, which is a real root inconsistency, not
-// fixed here).
+// token. The accept link is delivered by email only — never returned in this
+// response, in any environment. NOTE: the audit-log call below is NOT wrapped
+// in .catch() — matching root exactly (see PROGRESS.md: a failure here
+// surfaces as a 500 even though the user and token were already created,
+// which is a real root inconsistency, not fixed here).
 const invite: OryCMSRoute = {
   method: "POST",
   pattern: "auth/invite",
@@ -227,10 +226,7 @@ const invite: OryCMSRoute = {
         userAgent: request.headers.get("user-agent"),
       });
 
-      return oryJsonOk(
-        { userId: user.id, email, emailed: dispatch.emailed, inviteLink: dispatch.link },
-        201,
-      );
+      return oryJsonOk({ userId: user.id, email, emailed: dispatch.emailed }, 201);
     } catch (err) {
       return toErrorResponse(err);
     }

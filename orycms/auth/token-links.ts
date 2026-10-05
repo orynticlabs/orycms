@@ -38,17 +38,16 @@ const BODY: Record<OryCMSTokenType, (link: string) => string> = {
 export interface OryCMSTokenDispatchResult {
   /** True when the email was sent by a configured provider. */
   emailed: boolean;
-  /**
-   * The raw link — returned ONLY in dev/no-provider mode so setup works without
-   * email. Null when a provider sent the email (never leak the link then).
-   */
-  link: string | null;
 }
 
 /**
- * Deliver a token link: email it when a provider is configured, otherwise
- * return the link for the caller to surface in the API response (dev mode).
- * Email send failures degrade gracefully to returning the link.
+ * Deliver a token link by email. The link itself is NEVER returned to the
+ * caller — it either gets emailed by a configured provider, or (outside
+ * production, with no provider configured) printed to the server console so
+ * local development works without an email provider. In production, when no
+ * provider is configured, or when the configured provider's send() throws,
+ * nothing is printed or returned — only a server-side log line, with no link
+ * or token in it.
  */
 export async function dispatchOryCMSTokenLink(
   request: NextRequest,
@@ -57,15 +56,29 @@ export async function dispatchOryCMSTokenLink(
   rawToken: string,
 ): Promise<OryCMSTokenDispatchResult> {
   const link = buildOryCMSTokenLink(request, type, rawToken);
+
+  let result: Awaited<ReturnType<typeof sendOryCMSEmail>>;
   try {
-    const result = await sendOryCMSEmail({
+    result = await sendOryCMSEmail({
       to: email,
       subject: SUBJECTS[type],
       text: BODY[type](link),
     });
-    if (result.sent) return { emailed: true, link: null };
-  } catch {
-    // Provider misconfigured / down — fall back to returning the link.
+  } catch (err) {
+    console.error(
+      `[orycms] Failed to send ${type} email:`,
+      err instanceof Error ? err.message : "unknown error",
+    );
+    return { emailed: false };
   }
-  return { emailed: false, link };
+
+  if (result.sent) return { emailed: true };
+
+  // No email provider configured.
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`[orycms] [development only] ${type} link for ${email}: ${link}`);
+  } else {
+    console.warn(`[orycms] No email provider configured — ${type} email was not sent.`);
+  }
+  return { emailed: false };
 }
