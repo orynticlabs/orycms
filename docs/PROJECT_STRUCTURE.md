@@ -62,11 +62,18 @@ Note on current honest status of the app/admin/ screens: several of them exist a
 
 ## How the packages relate
 
-**Root `orycms/` and `packages/core/src/` (and `orycms/components/` and `packages/next/src/components/`) are two separately maintained source trees, not a build output or a symlink.** Verified by diffing them directly: some files are byte-identical (e.g. `content.engine.ts`), others have already diverged (e.g. `auth.ts`, `index.ts`, `hooks/index.ts`), and each side has files the other doesn't (e.g. `orycms/lib/error-capture.ts` has no counterpart in `packages/core/src/lib/`). There is no copy script, build step, or CI workflow anywhere in the repo that keeps them in sync — confirmed by searching `package.json` scripts and `tsup.config.ts` files in every package, and by the absence of a `.github/workflows/` directory.
+**Root `orycms/`+`app/` and `packages/core/src/`+`packages/next/src/` are two separately maintained source trees, not a build output or a symlink.** There is no copy script, build step, or CI workflow anywhere in the repo that keeps them in sync — confirmed by searching `package.json` scripts and `tsup.config.ts` files in every package, and by the absence of a `.github/workflows/` directory. Full file-by-file comparison (verified 2026-10-04 by diffing every `.ts`/`.tsx` file on both sides):
 
-**Practical consequence: a fix made in one tree does not automatically apply to the other.** If you change behavior in `orycms/content/content.engine.ts` (the file the root app actually runs), the same bug or feature gap still exists in `packages/core/src/content/content.engine.ts` (the file that ships to npm consumers) until someone manually ports the change — and vice versa. Any task that touches shared engine/auth/schema/content/media/plugin/hook logic should check both locations.
+| Area | Status | Detail |
+|---|---|---|
+| `orycms/<domain>/*` vs `packages/core/src/<domain>/*` (engine: auth, rbac, content, schema, media, hooks engine, email, plugins, etc.) | **111 files byte-identical**, 7 diverged | Diverged: `auth/auth.ts`, `auth/index.ts`, `auth/token-links.ts`, `core/core.migration.ts`, `hooks/index.ts`, `index.ts` (root barrel), `lib/route-guards.ts`. A fix landed in one does not apply to the other until manually ported — this has already happened at least once (P0-1/P0-2/P0-6/P0-7 all had to be ported by hand). |
+| `orycms/components/*` vs `packages/next/src/components/*` (UI) | Mostly identical; dashboard shell diverged | `AppShell.tsx`, `AppSidebar.tsx`, `Dashboard.tsx` are different, unrelated implementations — `packages/next`'s versions are a much simpler, earlier-stage design (e.g. its `AppSidebar` is just one static "Dashboard → /admin" link; the root's is a full permission-gated nav tree). `hooks/use-orycms-session.tsx` also diverged. Collections/content components (`OryCMSCollectionsAdminPage`, `OryCMSContentForm`, `OryCMSContentTable`, etc.) are identical. |
+| `orycms/lib/{error-capture,error-page,oryntic-error-reporting}.ts` | **Unique to `orycms/`, no packages/ counterpart** | Not CMS logic at all — `error-capture.ts`'s own comment references "h3" (a server framework used by Vite/Nitro-style tooling, not plain Next.js), indicating these are leftover dev-preview/hosting-environment scaffolding unrelated to OryCMS itself. Belong in the reference app, not in a published package. |
+| `packages/core/src/next/{dispatcher,http,routes/*}.ts` | **Unique to packages/core, no `orycms/` counterpart** — **route-complete except 6 auth routes, but almost entirely unwired and barely test-proven** (corrected 2026-10-04, see `internal/PROGRESS.md`'s U1-3 sub-task audit) | 10 files implementing a framework-agnostic route dispatcher meant to be mounted via `createOryCMSRouteHandlers()` from `@ory-cms/core/next`. Only `routes/auth.ts` is wired into `ORYCMS_ROUTES` today (6 session routes: login/logout/me/session/setup/setup-status). **But `collections.ts`, `audit.ts`, `database.ts`, `media.ts`, `roles.ts`, `settings.ts`, `stubs.ts`, `users.ts` are NOT dead code** — a route-by-route count found each already has a pattern-matching, logically-equivalent counterpart for every one of the root's corresponding routes (e.g. `collections.ts`'s 20 route patterns exactly match the root's 20 collections-module methods). The only real gap is 6 of auth's 12 routes (`refresh`, `forgot-password`, `reset-password`, `activate`, `invite`, `accept-invite` — the token-based flows) which have no counterpart anywhere in `packages/core` yet. What's actually missing across the board is (a) wiring every already-ported module into `ORYCMS_ROUTES`, (b) test coverage — only `collections.test.ts` (1 of 20 collections routes) and the auth-only `dispatcher.test.ts`/`mvp-surface.test.ts` exist for this whole directory — and (c) the root's 44 hand-written `app/api/orycms/**/route.ts` files still being a second, independent, non-shared implementation of the same API rather than thin wrappers over this one. All three are being closed module-by-module per `internal/PROGRESS.md`'s U1-3.0–U1-3.12 sub-tasks. |
+| `packages/next/src/admin/{OryCMSAdmin,OryCMSLoginPage,OryCMSSetupPage}.tsx` | **Unique to packages/next, no `orycms/`/`app/` counterpart** — and **unused by the root app** | These are the documented "mount this at `app/admin/page.tsx`" entry components (per `OryCMSAdmin.tsx`'s own doc comment). The root app's actual `app/admin/page.tsx`, `app/login/page.tsx`, `app/setup/page.tsx` do **not** import or use them — they're separate, independently written implementations (similar line counts, suggesting a common ancestor that then diverged). Nothing in this repo currently proves these packaged entry components actually work end-to-end for a real consumer. |
+| `packages/cli` / `packages/create-orycms` source | **Fixed (U1-1/U1-2, 2026-10-04)** — `create-ory-cms` now depends on `@ory-cms/cli` as a real package dependency | `packages/cli` exposes a `./internal` export subpath (`src/internal.ts`, built by `tsup` alongside the main `index.ts` CLI-binary entry, with its own `.d.ts`) covering exactly what `create-ory-cms` needs (`logger`, `detectNextJs`, `bootstrapAdmin`, `runInit`, the database wizard/migrate/seed functions, and associated types). `create-ory-cms` lists `"@ory-cms/cli": "0.1.5"` in `dependencies` and imports from `@ory-cms/cli/internal` — resolved via the existing npm-workspaces symlink in dev, same pattern as `packages/next`'s `"@ory-cms/core"` dependency. Proved with a real `npm pack` of both packages installed into a fresh project outside the repo (`create-ory-cms --help` runs correctly); see `internal/PROGRESS.md`'s dated log entry for full evidence. `@ory-cms/cli`'s own `dist/index.js` still bundles logic from the root `orycms/` folder via its `tsup` `@` alias (a separate, already-tracked issue, not part of U1-1/U1-2's scope). |
 
-`packages/cli` and `packages/create-orycms` are not duplicated anywhere else in the repo — they only exist as their own package source.
+**Planned direction:** unifying these into one source of truth (`packages/*` only, root becomes a consuming demo app) is planned but not yet executed — see `internal/PROGRESS.md`'s Phase 1–7 plan. Everything above describes **current reality**; this section will be rewritten once that plan actually lands, not before.
 
 ## Request flow
 
@@ -96,6 +103,24 @@ Not every route follows step 2–3 identically: a small number of routes call th
 | Change the CLI | `packages/cli/src/` — command registration is in `packages/cli/src/index.ts` |
 | Change the scaffolder | `packages/create-orycms/src/` — entry point is `index.ts`, actual logic in `runner.ts` |
 | Publish a fix to npm consumers, not just the reference app | Remember to also edit the matching file under `packages/core/src/` or `packages/next/src/` — see "How the packages relate" above |
+
+## Planned target layout (not yet executed)
+
+The proposed end state, once the unification plan in `internal/PROGRESS.md` lands:
+
+```
+packages/
+├── core/            @ory-cms/core — engine, sole source of truth (today's orycms/ merges in here)
+├── next/            @ory-cms/next — admin UI, sole source of truth (today's orycms/components merges in here)
+├── cli/             @ory-cms/cli — db:migrate actually wired, version read from package.json
+└── create-orycms/   create-ory-cms — takes an app-name argument, scaffolds a fresh directory
+
+apps/
+└── demo/            today's repo root (app/, orycms.config.ts, middleware.ts) — becomes a real npm
+                      consumer of the four packages above via npm workspaces, not a second copy of their source
+```
+
+`orycms/` and the root `app/`'s hand-rolled API routes disappear as separate source — `apps/demo` imports `@ory-cms/core`/`@ory-cms/next` like any external user would, which is also what makes it possible to finally prove those packages work for someone who isn't this repo. The three `orycms/lib/error-*` files (dev-preview/hosting scaffolding, not CMS logic) move to `apps/demo` directly rather than into either package.
 
 ## Available npm scripts
 

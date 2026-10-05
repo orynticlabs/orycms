@@ -1,10 +1,12 @@
 import { basename } from "node:path";
 
-import { detectAppStructure } from "../../cli/src/commands/init/bootstrap";
-import { detectPackageManager } from "../../cli/src/commands/init/detectors/package-manager";
-import { logger } from "../../cli/src/shared/logger";
-import type { AuthProvider, OfficialPlugin, PackageManager } from "../../cli/src/commands/init/types";
-import type { RouterType } from "../../cli/src/commands/init/bootstrap";
+import { detectAppStructure, detectPackageManager, logger } from "@ory-cms/cli/internal";
+import type {
+  AuthProvider,
+  OfficialPlugin,
+  PackageManager,
+  RouterType,
+} from "@ory-cms/cli/internal";
 import type { CreateAnswers, StorageProvider } from "./runner";
 
 // ── Choice lists ───────────────────────────────────────────────────────────────
@@ -53,9 +55,7 @@ const PLUGIN_CHOICES: Array<{ name: string; value: OfficialPlugin }> = [
  */
 export async function askCreateQuestions(cwd: string): Promise<CreateAnswers> {
   const { input, select, checkbox, confirm, password } = await import("@inquirer/prompts");
-  const { runDatabaseWizard } = await import(
-    "../../cli/src/commands/init/database/wizard"
-  );
+  const { runDatabaseWizard } = await import("@ory-cms/cli/internal");
 
   // ── 1. Project name ─────────────────────────────────────────────────────────
   const projectName = await input({

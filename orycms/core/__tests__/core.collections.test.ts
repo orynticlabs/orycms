@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getOryCMSCoreCollections } from "../core.collections";
+import { mapOryCMSCollectionToDatabaseSchema } from "@/mapper";
 
 describe("getOryCMSCoreCollections", () => {
   const collections = getOryCMSCoreCollections();
@@ -329,6 +330,25 @@ describe("getOryCMSCoreCollections", () => {
           expect(slugSet, `${c.slug}.${f.name} → "${f.target}"`).toContain(f.target);
         }
       }
+    }
+  });
+
+  // ── mapped schema: no duplicate columns ─────────────────────────────────────
+  // Regression test: a collection whose `fields` declares a name that the mapper
+  // also auto-injects as a system column (createdAt, updatedAt, id, _isDraft,
+  // _publishedAt, _seoTitle, _seoDescription, _seoImage) produces a mapped field
+  // list with that name twice, which breaks CREATE TABLE generation downstream.
+  // Runs purely against the in-memory mapped schema — no database involved.
+
+  it("mapped database schema has no duplicate column names, for every core collection", () => {
+    for (const c of collections) {
+      const schema = mapOryCMSCollectionToDatabaseSchema(c, "postgresql");
+      const names = schema.fields.map((f) => f.name);
+      const uniqueNames = new Set(names);
+      expect(
+        uniqueNames.size,
+        `"${c.slug}" produced duplicate column(s): ${names.join(", ")}`,
+      ).toBe(names.length);
     }
   });
 });

@@ -1,19 +1,23 @@
 import { basename } from "node:path";
 
-import { detectAppStructure, bootstrapAdmin } from "../../cli/src/commands/init/bootstrap";
-import { testDatabaseConnection } from "../../cli/src/commands/init/database/connection";
-import { migrateDatabase } from "../../cli/src/commands/init/database/migrations";
-import { seedDatabase } from "../../cli/src/commands/init/database/seeder";
-import { detectPackageManager } from "../../cli/src/commands/init/detectors/package-manager";
-import { runInit } from "../../cli/src/commands/init/init";
+import {
+  detectAppStructure,
+  bootstrapAdmin,
+  testDatabaseConnection,
+  migrateDatabase,
+  seedDatabase,
+  detectPackageManager,
+  runInit,
+} from "@ory-cms/cli/internal";
 import type {
   AuthProvider,
   GeneratorResult,
   OfficialPlugin,
   PackageManager,
-} from "../../cli/src/commands/init/types";
-import type { DatabaseWizardResult } from "../../cli/src/commands/init/database/wizard";
-import type { ConfirmFn, RouterType } from "../../cli/src/commands/init/bootstrap";
+  DatabaseWizardResult,
+  ConfirmFn,
+  RouterType,
+} from "@ory-cms/cli/internal";
 
 // ── Public types ───────────────────────────────────────────────────────────────
 
