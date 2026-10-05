@@ -38,7 +38,7 @@ orycms/                    The CMS engine source used by the root app (imported 
 ├── media/                 Media upload/storage engine
 ├── plugins/               Plugin discovery, manifest validation, dependency resolution, registry
 ├── hooks/                 Lifecycle hook engine + registered hook points
-├── email/                 Email provider factory + service (used by auth invite/reset flows)
+├── email/                 Email provider factory + service — SMTP only (`nodemailer`, lazy-loaded) or "custom" (developer-supplied send fn); used by auth invite/reset/activation link delivery, never returned in an API response
 ├── admin/                 Admin page/sidebar registry (lets features register admin UI)
 ├── settings/, tokens/, audit/
 │                          Settings persistence, one-time tokens, audit log
@@ -98,7 +98,7 @@ Not every route follows step 2–3 identically: a small number of routes call th
 | Add a database adapter or fix an existing one | `orycms/database/adapters/<name>.adapter.ts`, implementing `orycms/database/adapter.interface.ts`; also register it in `orycms/database/registry.ts` |
 | Change how migrations run | `orycms/migrations/migration.engine.ts` (execution) and `orycms/core/core.migration.ts` (initial schema install) |
 | Add a lifecycle hook point | `orycms/hooks/hook.constants.ts` (name it) and call `runOryCMSBeforeHooks`/`runOryCMSAfterHooks` from the relevant engine |
-| Change email sending | `orycms/email/providers.ts` (add a provider) or `orycms/email/email.factory.ts`/`email.service.ts` (sending logic) |
+| Change email sending | `orycms/email/providers.ts` (SMTP via `nodemailer`, config in `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURE`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_FROM` env vars or `orycms.config.ts`'s `email.options`; or "custom" for a developer-supplied send fn) or `orycms/email/email.factory.ts`/`email.service.ts` (sending logic) |
 | Change an admin dashboard screen | The matching file under `app/admin/<name>/page.tsx` — every dashboard screen lives under `app/admin/` now, real or still-placeholder alike |
 | Change the CLI | `packages/cli/src/` — command registration is in `packages/cli/src/index.ts` |
 | Change the scaffolder | `packages/create-orycms/src/` — entry point is `index.ts`, actual logic in `runner.ts` |

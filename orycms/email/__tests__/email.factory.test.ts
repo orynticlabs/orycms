@@ -24,20 +24,20 @@ afterEach(() => {
 // ── resolveOryCMSEmailConfig ────────────────────────────────────────────────────
 
 describe("resolveOryCMSEmailConfig", () => {
-  it("returns null when nothing is configured (dev/link mode)", () => {
+  it("returns null when nothing is configured (console-only dev mode)", () => {
     expect(resolveOryCMSEmailConfig(undefined)).toBeNull();
     expect(resolveOryCMSEmailConfig({})).toBeNull();
   });
 
   it("uses the config block provider + from", () => {
-    const resolved = resolveOryCMSEmailConfig({ provider: "resend", from: "A <a@b.co>" });
-    expect(resolved).toEqual({ provider: "resend", from: "A <a@b.co>", options: {} });
+    const resolved = resolveOryCMSEmailConfig({ provider: "smtp", from: "A <a@b.co>" });
+    expect(resolved).toEqual({ provider: "smtp", from: "A <a@b.co>", options: {} });
   });
 
   it("env ORYCMS_EMAIL_PROVIDER overrides the config block", () => {
-    process.env.ORYCMS_EMAIL_PROVIDER = "postmark";
-    const resolved = resolveOryCMSEmailConfig({ provider: "resend" });
-    expect(resolved?.provider).toBe("postmark");
+    process.env.ORYCMS_EMAIL_PROVIDER = "custom";
+    const resolved = resolveOryCMSEmailConfig({ provider: "smtp" });
+    expect(resolved?.provider).toBe("custom");
   });
 
   it("ignores an unknown env provider and falls back to config", () => {
@@ -48,7 +48,7 @@ describe("resolveOryCMSEmailConfig", () => {
 
   it("env ORYCMS_EMAIL_FROM overrides the config from", () => {
     process.env.ORYCMS_EMAIL_FROM = "Env <env@b.co>";
-    const resolved = resolveOryCMSEmailConfig({ provider: "resend", from: "Cfg <cfg@b.co>" });
+    const resolved = resolveOryCMSEmailConfig({ provider: "smtp", from: "Cfg <cfg@b.co>" });
     expect(resolved?.from).toBe("Env <env@b.co>");
   });
 });
@@ -60,11 +60,13 @@ describe("getOryCMSEmailProvider", () => {
     expect(getOryCMSEmailProvider({})).toBeNull();
   });
 
-  it("returns a named provider for each known id", () => {
-    for (const provider of ["resend", "smtp", "sendgrid", "ses", "mailgun", "postmark"] as const) {
-      const p = getOryCMSEmailProvider({ provider });
-      expect(p?.name).toBe(provider);
-    }
+  it("smtp needs its own config to construct — missing host throws immediately", () => {
+    expect(() => getOryCMSEmailProvider({ provider: "smtp" })).toThrow(/host/i);
+  });
+
+  it("smtp returns a named provider once a host is configured", () => {
+    const p = getOryCMSEmailProvider({ provider: "smtp", options: { host: "smtp.acme.io" } });
+    expect(p?.name).toBe("smtp");
   });
 
   it("custom provider uses the supplied send function", async () => {
@@ -98,15 +100,15 @@ describe("sendOryCMSEmail", () => {
       { provider: "custom", options: { send } },
     );
     expect(result).toEqual({ sent: true, provider: "custom" });
-    expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "a@b.co", subject: "Invite" }),
-    );
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: "a@b.co", subject: "Invite" }));
   });
 });
 
 describe("isOryCMSEmailConfigured", () => {
   it("false when unconfigured, true with a provider", async () => {
     expect(await isOryCMSEmailConfigured({})).toBe(false);
-    expect(await isOryCMSEmailConfigured({ provider: "custom", options: { send: vi.fn() } })).toBe(true);
+    expect(await isOryCMSEmailConfigured({ provider: "custom", options: { send: vi.fn() } })).toBe(
+      true,
+    );
   });
 });
