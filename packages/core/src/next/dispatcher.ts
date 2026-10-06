@@ -1,5 +1,6 @@
 import type { OryCMSEndpoint, OryCMSHandlerContext } from "./http";
 import { jsonError } from "./http";
+import { safeRouteError } from "./route-errors";
 import { ORYCMS_ROUTES } from "./routes";
 
 /**
@@ -40,10 +41,7 @@ function splitPath(path: string): string[] {
  * Try to match `segments` against a route `pattern`. Returns the extracted
  * params on success, or null on a shape mismatch.
  */
-function matchPattern(
-  pattern: string,
-  segments: string[],
-): Record<string, string> | null {
+function matchPattern(pattern: string, segments: string[]): Record<string, string> | null {
   const patternSegs = splitPath(pattern);
   if (patternSegs.length !== segments.length) return null;
 
@@ -90,10 +88,7 @@ export function createOryCMSRouteHandlers(
 
     const allSegs = splitPath(url.pathname);
     // Strip the basePath prefix.
-    if (
-      allSegs.length < baseSegs.length ||
-      baseSegs.some((seg, i) => seg !== allSegs[i])
-    ) {
+    if (allSegs.length < baseSegs.length || baseSegs.some((seg, i) => seg !== allSegs[i])) {
       return jsonError("NOT_FOUND", "Unknown OryCMS API route.", 404);
     }
     const segments = allSegs.slice(baseSegs.length);
@@ -109,9 +104,9 @@ export function createOryCMSRouteHandlers(
       const ctx: OryCMSHandlerContext = { request, params, url };
       try {
         return await route.handler(ctx);
-      } catch {
-        // Uniform error envelope — mirrors the per-route try/catch in the app.
-        return jsonError("INTERNAL_ERROR", "Request failed.", 500);
+      } catch (err) {
+        // Same rule as every route: the caller gets a generic envelope, and the detail is logged redacted.
+        return safeRouteError("dispatcher", err);
       }
     }
 

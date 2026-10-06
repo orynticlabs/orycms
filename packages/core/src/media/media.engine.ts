@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { mkdir, writeFile, unlink } from "fs/promises";
 import type { Pool } from "pg";
 import { getOryCMSPool } from "@/lib/db";
+import { redactDetail } from "@/lib/redact";
 import { OryCMSMediaError } from "./media.errors";
 import type { OryCMSMediaAsset, OryCMSMediaFolder, OryCMSMediaType } from "@/types";
 import { buildOryCMSHookContext, runOryCMSBeforeHooks, runOryCMSAfterHooks } from "@/hooks";
@@ -59,6 +60,75 @@ function mediaTypeFrom(mime: string): OryCMSMediaType {
 
 function extFrom(mime: string): string {
   return EXT_MAP[mime] ?? "";
+}
+
+// ── Content checks ─────────────────────────────────────────────────────────────
+
+const ASCII = (buf: Buffer, text: string, offset = 0): boolean =>
+  buf.subarray(offset, offset + text.length).toString("latin1") === text;
+
+const BYTES = (buf: Buffer, bytes: number[], offset = 0): boolean =>
+  bytes.every((b, i) => buf[offset + i] === b);
+
+function isUtf8Text(buf: Buffer): boolean {
+  if (buf.includes(0x00)) return false;
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(buf);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * An SVG is accepted only as a plain drawing: it must contain an svg root and no script,
+ * foreign-object, inline event handler or javascript: URL.
+ */
+function isPlainSvg(buf: Buffer): boolean {
+  if (!isUtf8Text(buf)) return false;
+  const text = buf.toString("utf8").replace(/^\uFEFF/, "");
+  if (!/<svg[\s>]/i.test(text.slice(0, 4096))) return false;
+  return !/<script|<foreignobject|\son[a-z]+\s*=|javascript:/i.test(text);
+}
+
+/** Checks the file's leading bytes against the type the client claimed. */
+export function matchesClaimedType(buf: Buffer, mime: string): boolean {
+  switch (mime) {
+    case "image/jpeg":
+      return BYTES(buf, [0xff, 0xd8, 0xff]);
+    case "image/png":
+      return BYTES(buf, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    case "image/gif":
+      return ASCII(buf, "GIF87a") || ASCII(buf, "GIF89a");
+    case "image/webp":
+      return ASCII(buf, "RIFF") && ASCII(buf, "WEBP", 8);
+    case "image/svg+xml":
+      return isPlainSvg(buf);
+    case "video/mp4":
+      return ASCII(buf, "ftyp", 4);
+    case "video/webm":
+      return BYTES(buf, [0x1a, 0x45, 0xdf, 0xa3]);
+    case "video/ogg":
+      return ASCII(buf, "OggS");
+    case "application/pdf":
+      return ASCII(buf, "%PDF-");
+    case "application/msword":
+      return BYTES(buf, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+      return BYTES(buf, [0x50, 0x4b, 0x03, 0x04]);
+    case "text/plain":
+    case "text/csv":
+      return isUtf8Text(buf);
+    default:
+      return false;
+  }
+}
+
+/** True when `candidate` resolves to a location strictly inside the upload directory. */
+function isInsideUploadDir(candidate: string): boolean {
+  const root = path.resolve(uploadDir());
+  const target = path.resolve(candidate);
+  return target.startsWith(root + path.sep);
 }
 
 // ── Image dimension parser (no deps) ─────────────────────────────────────────
@@ -239,6 +309,13 @@ export async function uploadOryCMSMedia(
   if (input.size > MAX_SIZE) {
     throw new OryCMSMediaError("MEDIA_TOO_LARGE", `File exceeds the 50 MB limit.`, 413);
   }
+  if (!matchesClaimedType(input.buffer, input.mimeType)) {
+    throw new OryCMSMediaError(
+      "MEDIA_CONTENT_MISMATCH",
+      "The file content does not match its type.",
+      415,
+    );
+  }
 
   await runOryCMSBeforeHooks(
     "beforeUpload",
@@ -259,11 +336,11 @@ export async function uploadOryCMSMedia(
     await mkdir(uploadDir(), { recursive: true });
     await writeFile(filePath, input.buffer);
   } catch (err) {
-    throw new OryCMSMediaError(
-      "MEDIA_UPLOAD_FAILED",
-      `Failed to save file: ${err instanceof Error ? err.message : String(err)}`,
-      500,
+    // The raw error can carry a filesystem path, so it is logged (redacted), never returned.
+    console.error(
+      `[orycms] media write failed: ${redactDetail(err instanceof Error ? err.message : String(err))}`,
     );
+    throw new OryCMSMediaError("MEDIA_UPLOAD_FAILED", "Failed to save file.", 500);
   }
 
   const dims =
@@ -466,13 +543,22 @@ export async function deleteOryCMSMedia(id: string, pool: Pool = getOryCMSPool()
     ),
   );
 
-  try {
-    await unlink(res.rows[0].file_path);
-  } catch {
-    // ignore ENOENT
-  }
-
+  // Row first: if the row cannot be removed, the file stays, so the two never disagree
+  // in the "row gone, file kept" direction that a dangling reference would create.
   await pool.query(`DELETE FROM orycms_media WHERE id = $1`, [id]);
+
+  const storedPath = res.rows[0].file_path;
+  if (!isInsideUploadDir(storedPath)) {
+    console.error("[orycms] media delete skipped a stored path outside the upload directory");
+  } else {
+    try {
+      await unlink(storedPath);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        console.error(`[orycms] media file removal failed: ${redactDetail(String(err))}`);
+      }
+    }
+  }
 
   await runOryCMSAfterHooks(
     "afterMediaDelete",

@@ -4,6 +4,7 @@ import type { OryCMSSessionData } from "@/auth";
 import { requireOryCMSPermission } from "@/rbac";
 import type { OryCMSResource, OryCMSAction } from "@/rbac";
 import { getOryCMSPool } from "@/lib/db";
+import { safeRouteError } from "../next/route-errors";
 
 // Framework-agnostic: uses the Web platform Request/Response so @ory-cms/core
 // carries no next/server dependency. NextRequest extends Request and
@@ -21,54 +22,13 @@ export function oryJsonError(code: string, message: string, status: number): Res
 
 // ── Error mapping ──────────────────────────────────────────────────────────────
 
-/** Shape shared by every domain error that carries an HTTP status. */
-interface StatusfulError {
-  code: string;
-  message: string;
-  statusCode: number;
-  issues?: unknown[];
-  field?: string;
-}
-
-function hasStatusCode(err: unknown): err is StatusfulError {
-  if (!(err instanceof Error)) return false;
-  const e = err as unknown as Record<string, unknown>;
-  return typeof e.statusCode === "number" && typeof e.code === "string";
-}
-
 /**
  * Maps any thrown value to the canonical `{ success:false, error:{...} }` envelope.
- *
- * - Auth / Content / CollectionPersistence / Hook / Media errors all expose
- *   `code` + `statusCode` → mapped generically (preserving `issues`/`field`).
- * - Plugin / Manifest errors have `code` but NO `statusCode` → default to 400.
- * - Everything else → 500 INTERNAL_ERROR (message hidden).
+ * Delegates to the shared rule in next/route-errors.ts: only deliberate errors keep
+ * their message, and everything else (including driver errors) becomes a generic 500.
  */
 export function toErrorResponse(err: unknown): Response {
-  if (hasStatusCode(err)) {
-    const body: { code: string; message: string; issues?: unknown[]; field?: string } = {
-      code: err.code,
-      message: err.message,
-    };
-    if (err.issues) body.issues = err.issues;
-    if (err.field) body.field = err.field;
-    return Response.json({ success: false, error: body }, { status: err.statusCode });
-  }
-
-  // Plugin/Manifest errors: have `code` but no statusCode.
-  if (err instanceof Error && typeof (err as unknown as Record<string, unknown>).code === "string") {
-    const code = (err as unknown as Record<string, unknown>).code as string;
-    const status = code.endsWith("_NOT_FOUND") ? 404 : 400;
-    return Response.json(
-      { success: false, error: { code, message: err.message } },
-      { status },
-    );
-  }
-
-  return Response.json(
-    { success: false, error: { code: "INTERNAL_ERROR", message: "Request failed." } },
-    { status: 500 },
-  );
+  return safeRouteError("route", err);
 }
 
 // ── Guard ──────────────────────────────────────────────────────────────────────

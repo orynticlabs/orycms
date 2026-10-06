@@ -1,3 +1,4 @@
+import path from "path";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Pool } from "pg";
 
@@ -20,6 +21,18 @@ import {
   listOryCMSMediaFolders,
 } from "../media.engine";
 import { OryCMSMediaError } from "../media.errors";
+
+// Leading bytes that match each claimed type, so the content check passes.
+const JPEG_FIXTURE = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(97)]);
+const PNG_FIXTURE = Buffer.concat([
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  Buffer.alloc(2),
+]);
+const MP4_FIXTURE = Buffer.concat([
+  Buffer.from([0, 0, 0, 0x18]),
+  Buffer.from("ftyp", "latin1"),
+  Buffer.alloc(6),
+]);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -85,7 +98,7 @@ describe("uploadOryCMSMedia", () => {
     });
 
     const result = await uploadOryCMSMedia(
-      { buffer: Buffer.alloc(100), name: "photo.jpg", mimeType: "image/jpeg", size: 100 },
+      { buffer: JPEG_FIXTURE, name: "photo.jpg", mimeType: "image/jpeg", size: 100 },
       "owner@test.com",
       undefined,
       pool,
@@ -113,7 +126,7 @@ describe("uploadOryCMSMedia", () => {
 
     for (let i = 0; i < 2; i++) {
       const asset = await uploadOryCMSMedia(
-        { buffer: Buffer.alloc(10), name: "photo.jpg", mimeType: "image/jpeg", size: 10 },
+        { buffer: JPEG_FIXTURE, name: "photo.jpg", mimeType: "image/jpeg", size: 10 },
         "owner@test.com",
         undefined,
         pool,
@@ -164,7 +177,7 @@ describe("uploadOryCMSMedia", () => {
     const pool = makePool(() => ({ rows: [] }));
     await expect(
       uploadOryCMSMedia(
-        { buffer: Buffer.alloc(10), name: "photo.png", mimeType: "image/png", size: 10 },
+        { buffer: PNG_FIXTURE, name: "photo.png", mimeType: "image/png", size: 10 },
         "owner@test.com",
         undefined,
         pool,
@@ -269,12 +282,13 @@ describe("getOryCMSMedia", () => {
 describe("deleteOryCMSMedia", () => {
   it("deletes the file from disk and the DB row", async () => {
     vi.mocked(unlink).mockResolvedValue(undefined);
+    const storedFile = path.join(process.cwd(), "public", "uploads", "uuid-abc.jpg");
     let deleted = false;
     let callIdx = 0;
     const pool = makePool((sql: string) => {
       callIdx++;
       if (callIdx === 1) return { rows: [] }; // ensureTables
-      if (callIdx === 2) return { rows: [{ file_path: "/project/public/uploads/uuid-abc.jpg" }] }; // SELECT
+      if (callIdx === 2) return { rows: [{ file_path: storedFile }] }; // SELECT
       if (sql.includes("DELETE")) {
         deleted = true;
         return { rows: [] };
@@ -283,7 +297,7 @@ describe("deleteOryCMSMedia", () => {
     });
 
     await deleteOryCMSMedia("media-uuid-001", pool);
-    expect(vi.mocked(unlink)).toHaveBeenCalledWith("/project/public/uploads/uuid-abc.jpg");
+    expect(vi.mocked(unlink)).toHaveBeenCalledWith(storedFile);
     expect(deleted).toBe(true);
   });
 
