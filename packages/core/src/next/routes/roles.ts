@@ -1,4 +1,6 @@
-import { guardOryCMS, toErrorResponse, oryJsonOk } from "@/lib/route-guards";
+import { getOryCMSPool } from "@/lib/db";
+import { guardOryCMS, oryJsonOk } from "@/lib/route-guards";
+import { getOryCMSUserPermissions } from "@/rbac";
 import {
   listOryCMSRoles,
   createOryCMSRole,
@@ -7,10 +9,106 @@ import {
   deleteOryCMSRole,
   getOryCMSRolePermissions,
   setOryCMSRolePermissions,
+  listOryCMSPermissions,
 } from "@/roles";
 import { recordOryCMSAuditLog } from "@/audit";
 import type { OryCMSRoute } from "../dispatcher";
 import { statusError } from "../http";
+import { safeRouteError } from "../route-errors";
+
+// ── Rules ───────────────────────────────────────────────────────────────────────
+
+/** Must match the role names in ORYCMS_DEFAULT_PERMISSIONS (orycms/rbac/rbac.engine.ts). */
+const BUILT_IN_ROLE_NAMES: readonly string[] = ["Owner", "Admin", "Editor", "Author", "Viewer"];
+
+const ROLE_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9 _-]{0,63}$/;
+const ROLE_DESCRIPTION_MAX = 500;
+const PERMISSION_ID_MAX_COUNT = 500;
+const PERMISSION_ID_MAX_LENGTH = 64;
+
+/** Postgres SQLSTATE for a unique-constraint violation. */
+const UNIQUE_VIOLATION = "23505";
+
+// ── Helpers ─────────────────────────────────────────────────────────────────────
+
+const invalid = (message: string): Error => statusError("VALIDATION_ERROR", message, 422);
+const conflict = (code: string, message: string): Error => statusError(code, message, 409);
+
+/** Parses a JSON object body. Malformed JSON and non-object bodies are 422, not 500. */
+async function readObjectBody(request: Request): Promise<Record<string, unknown>> {
+  let parsed: unknown;
+  try {
+    parsed = await request.json();
+  } catch {
+    throw invalid("Request body must be valid JSON.");
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw invalid("Request body must be a JSON object.");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+/** Validates the name and description fields. `requireName` is true for create. */
+function parseRoleFields(
+  body: Record<string, unknown>,
+  requireName: boolean,
+): { name?: string; description?: string | null } {
+  const out: { name?: string; description?: string | null } = {};
+
+  if (body.name === undefined || body.name === "") {
+    if (requireName) throw invalid("Role name is required.");
+  } else {
+    if (typeof body.name !== "string" || !ROLE_NAME_PATTERN.test(body.name)) {
+      throw invalid("Role name is invalid.");
+    }
+    out.name = body.name;
+  }
+
+  if (body.description !== undefined) {
+    if (
+      body.description !== null &&
+      (typeof body.description !== "string" || body.description.length > ROLE_DESCRIPTION_MAX)
+    ) {
+      throw invalid(
+        `Role description must be a string of at most ${ROLE_DESCRIPTION_MAX} characters.`,
+      );
+    }
+    out.description = body.description as string | null;
+  }
+
+  return out;
+}
+
+/** Validates the permission-id list shape. Existence is checked separately. */
+function parsePermissionIds(body: Record<string, unknown>): string[] {
+  const ids = body.permissionIds;
+  if (!Array.isArray(ids)) throw invalid("permissionIds must be an array of permission ids.");
+  if (ids.length > PERMISSION_ID_MAX_COUNT) {
+    throw invalid(`At most ${PERMISSION_ID_MAX_COUNT} permission ids may be sent.`);
+  }
+  for (const id of ids) {
+    if (typeof id !== "string" || id.length === 0 || id.length > PERMISSION_ID_MAX_LENGTH) {
+      throw invalid("Each permission id must be a non-empty string.");
+    }
+  }
+  return ids as string[];
+}
+
+/** Built-in roles and the role the caller holds cannot be changed or deleted. */
+function assertRoleMutable(role: { name: string }, callerRoleName: string | null): void {
+  if (BUILT_IN_ROLE_NAMES.includes(role.name)) {
+    throw conflict("BUILT_IN_ROLE", "Built-in roles cannot be changed or deleted.");
+  }
+  if (callerRoleName !== null && role.name === callerRoleName) {
+    throw conflict("SELF_ROLE", "You cannot change the role you hold.");
+  }
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return (err as { code?: unknown } | null)?.code === UNIQUE_VIOLATION;
+}
+
+// ── Routes ──────────────────────────────────────────────────────────────────────
 
 const listRoles: OryCMSRoute = {
   method: "GET",
@@ -20,7 +118,7 @@ const listRoles: OryCMSRoute = {
       await guardOryCMS(request, "roles", "read");
       return oryJsonOk(await listOryCMSRoles());
     } catch (err) {
-      return toErrorResponse(err);
+      return safeRouteError("roles.list", err);
     }
   },
 };
@@ -31,11 +129,18 @@ const createRole: OryCMSRoute = {
   handler: async ({ request }) => {
     try {
       const session = await guardOryCMS(request, "roles", "create");
-      const body = (await request.json()) as { name?: string; description?: string | null };
-      if (!body.name) {
-        return toErrorResponse(statusError("VALIDATION_ERROR", "Role name is required.", 422));
+      const fields = parseRoleFields(await readObjectBody(request), true);
+      let role;
+      try {
+        role = await createOryCMSRole({
+          name: fields.name as string,
+          description: fields.description,
+        });
+      } catch (err) {
+        if (isUniqueViolation(err))
+          throw conflict("ROLE_NAME_TAKEN", "A role with this name already exists.");
+        throw err;
       }
-      const role = await createOryCMSRole({ name: body.name, description: body.description });
       await recordOryCMSAuditLog({
         userId: session.userId,
         action: "create",
@@ -47,7 +152,7 @@ const createRole: OryCMSRoute = {
       });
       return oryJsonOk(role, 201);
     } catch (err) {
-      return toErrorResponse(err);
+      return safeRouteError("roles.create", err);
     }
   },
 };
@@ -60,7 +165,7 @@ const getRole: OryCMSRoute = {
       await guardOryCMS(request, "roles", "read");
       return oryJsonOk(await getOryCMSRole(params.id));
     } catch (err) {
-      return toErrorResponse(err);
+      return safeRouteError("roles.get", err);
     }
   },
 };
@@ -71,20 +176,30 @@ const updateRole: OryCMSRoute = {
   handler: async ({ request, params }) => {
     try {
       const session = await guardOryCMS(request, "roles", "update");
-      const body = (await request.json()) as { name?: string; description?: string | null };
-      const role = await updateOryCMSRole(params.id, body);
+      const existing = await getOryCMSRole(params.id);
+      assertRoleMutable(existing, session.roleName);
+      const body = await readObjectBody(request);
+      const fields = parseRoleFields(body, false);
+      let role;
+      try {
+        role = await updateOryCMSRole(params.id, fields);
+      } catch (err) {
+        if (isUniqueViolation(err))
+          throw conflict("ROLE_NAME_TAKEN", "A role with this name already exists.");
+        throw err;
+      }
       await recordOryCMSAuditLog({
         userId: session.userId,
         action: "update",
         resource: "roles",
         resourceId: params.id,
-        metadata: { fields: Object.keys(body) },
+        metadata: { fields: Object.keys(fields) },
         ipAddress: request.headers.get("x-forwarded-for"),
         userAgent: request.headers.get("user-agent"),
       });
       return oryJsonOk(role);
     } catch (err) {
-      return toErrorResponse(err);
+      return safeRouteError("roles.update", err);
     }
   },
 };
@@ -95,6 +210,18 @@ const deleteRole: OryCMSRoute = {
   handler: async ({ request, params }) => {
     try {
       const session = await guardOryCMS(request, "roles", "delete");
+      const existing = await getOryCMSRole(params.id);
+      assertRoleMutable(existing, session.roleName);
+
+      const pool = getOryCMSPool();
+      const usage = await pool.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM orycms_users WHERE "roleId" = $1`,
+        [params.id],
+      );
+      if (Number(usage.rows[0]?.count ?? 0) > 0) {
+        throw conflict("ROLE_IN_USE", "This role still has users assigned. Reassign them first.");
+      }
+
       await deleteOryCMSRole(params.id);
       await recordOryCMSAuditLog({
         userId: session.userId,
@@ -106,7 +233,7 @@ const deleteRole: OryCMSRoute = {
       });
       return oryJsonOk({ id: params.id, deleted: true });
     } catch (err) {
-      return toErrorResponse(err);
+      return safeRouteError("roles.delete", err);
     }
   },
 };
@@ -119,7 +246,7 @@ const getRolePermissions: OryCMSRoute = {
       await guardOryCMS(request, "roles", "read");
       return oryJsonOk(await getOryCMSRolePermissions(params.id));
     } catch (err) {
-      return toErrorResponse(err);
+      return safeRouteError("roles.permissions.get", err);
     }
   },
 };
@@ -130,8 +257,26 @@ const setRolePermissions: OryCMSRoute = {
   handler: async ({ request, params }) => {
     try {
       const session = await guardOryCMS(request, "roles", "update");
-      const body = (await request.json()) as { permissionIds?: string[] };
-      const permissionIds = Array.isArray(body.permissionIds) ? body.permissionIds : [];
+      const existing = await getOryCMSRole(params.id);
+      assertRoleMutable(existing, session.roleName);
+      const permissionIds = parsePermissionIds(await readObjectBody(request));
+
+      // Unknown ids are rejected, and the caller may grant only what it holds itself.
+      const pool = getOryCMSPool();
+      const known = new Map((await listOryCMSPermissions(pool)).map((p) => [p.id, p]));
+      const callerPerms = session.roleName
+        ? await getOryCMSUserPermissions(session.roleName, pool)
+        : new Set<string>();
+      for (const id of permissionIds) {
+        const perm = known.get(id);
+        if (!perm) throw invalid("Unknown permission id.");
+        const held =
+          callerPerms.has(`${perm.resource}:${perm.action}`) ||
+          callerPerms.has(`${perm.resource}:manage`);
+        if (!held)
+          throw statusError("FORBIDDEN", "You cannot grant permissions you do not hold.", 403);
+      }
+
       await setOryCMSRolePermissions(params.id, permissionIds);
       await recordOryCMSAuditLog({
         userId: session.userId,
@@ -144,7 +289,7 @@ const setRolePermissions: OryCMSRoute = {
       });
       return oryJsonOk({ roleId: params.id, permissionIds });
     } catch (err) {
-      return toErrorResponse(err);
+      return safeRouteError("roles.permissions.set", err);
     }
   },
 };

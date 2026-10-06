@@ -6,6 +6,8 @@ import type { OryCMSSessionData } from "@/auth";
 import { requireOryCMSPermission } from "@/rbac";
 import type { OryCMSResource, OryCMSAction } from "@/rbac";
 import { getOryCMSPool } from "@/lib/db";
+import { OryCMSPluginError } from "@/plugins/plugin.engine";
+import { OryCMSManifestError } from "@/plugins/plugin.manifest";
 
 // ── Standard response envelopes ────────────────────────────────────────────────
 
@@ -35,12 +37,32 @@ function hasStatusCode(err: unknown): err is StatusfulError {
 }
 
 /**
+ * Removes anything that looks like a connection URL or a password assignment.
+ * Same approach as packages/core's route-errors.ts.
+ */
+export function redactDetail(text: string): string {
+  return text
+    .replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, "[redacted-url]")
+    .replace(/password\s*[=:]\s*\S+/gi, "password=[redacted]");
+}
+
+function logRouteDetail(detail: unknown): void {
+  const message = detail instanceof Error ? detail.message : String(detail);
+  console.error(`[orycms] ${redactDetail(message)}`);
+}
+
+/**
  * Maps any thrown value to the canonical `{ success:false, error:{...} }` envelope.
  *
- * - Auth / Content / CollectionPersistence / Hook / Media errors all expose
- *   `code` + `statusCode` → mapped generically (preserving `issues`/`field`).
- * - Plugin / Manifest errors have `code` but NO `statusCode` → default to 400.
- * - Everything else → 500 INTERNAL_ERROR (message hidden).
+ * Only deliberate errors pass their message through:
+ * - Errors that carry a numeric `statusCode` and a string `code` (auth, content,
+ *   collection, hook, media, migration errors). Their `issues` and `field` are kept.
+ * - Plugin and manifest errors, which are thrown without a `statusCode`. They map to
+ *   400, or 404 for a `*_NOT_FOUND` code.
+ *
+ * Everything else, including driver errors (which carry a SQLSTATE `code` and may
+ * carry connection detail), becomes a generic 500 `INTERNAL_ERROR`. The detail is
+ * logged server-side with URLs and password values redacted.
  */
 export function toErrorResponse(err: unknown): NextResponse {
   if (hasStatusCode(err)) {
@@ -53,16 +75,13 @@ export function toErrorResponse(err: unknown): NextResponse {
     return NextResponse.json({ success: false, error: body }, { status: err.statusCode });
   }
 
-  // Plugin/Manifest errors: have `code` but no statusCode.
-  if (err instanceof Error && typeof (err as unknown as Record<string, unknown>).code === "string") {
-    const code = (err as unknown as Record<string, unknown>).code as string;
+  if (err instanceof OryCMSPluginError || err instanceof OryCMSManifestError) {
+    const code = err.code;
     const status = code.endsWith("_NOT_FOUND") ? 404 : 400;
-    return NextResponse.json(
-      { success: false, error: { code, message: err.message } },
-      { status },
-    );
+    return NextResponse.json({ success: false, error: { code, message: err.message } }, { status });
   }
 
+  logRouteDetail(err);
   return NextResponse.json(
     { success: false, error: { code: "INTERNAL_ERROR", message: "Request failed." } },
     { status: 500 },

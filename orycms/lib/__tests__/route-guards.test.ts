@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import { guardOryCMS, toErrorResponse, oryJsonOk, oryJsonError } from "../route-guards";
 import { OryCMSAuthError } from "@/auth";
 import { clearOryCMSPermissionCache } from "@/rbac";
+import { OryCMSPluginError } from "@/plugins/plugin.engine";
 
 // ── Mock pool ──────────────────────────────────────────────────────────────────
 
@@ -88,14 +89,14 @@ describe("toErrorResponse", () => {
     expect(body.error.issues).toEqual([{ path: "name" }]);
   });
 
-  it("defaults status-less coded errors (plugin/manifest) to 400", async () => {
-    const err = Object.assign(new Error("bad plugin"), { code: "INVALID_PLUGIN" });
+  it("defaults status-less plugin errors to 400", async () => {
+    const err = new OryCMSPluginError("INVALID_PLUGIN", "bad plugin");
     const res = toErrorResponse(err);
     expect(res.status).toBe(400);
   });
 
-  it("maps *_NOT_FOUND status-less errors to 404", async () => {
-    const err = Object.assign(new Error("missing"), { code: "PLUGIN_NOT_FOUND" });
+  it("maps *_NOT_FOUND status-less plugin errors to 404", async () => {
+    const err = new OryCMSPluginError("PLUGIN_NOT_FOUND", "missing");
     const res = toErrorResponse(err);
     expect(res.status).toBe(404);
   });
