@@ -14,6 +14,7 @@ import {
 import { recordOryCMSAuditLog } from "@/audit";
 import type { OryCMSRoute } from "../dispatcher";
 import { statusError } from "../http";
+import { readObjectBody } from "../request-body";
 import { safeRouteError } from "../route-errors";
 
 // ── Rules ───────────────────────────────────────────────────────────────────────
@@ -33,20 +34,6 @@ const UNIQUE_VIOLATION = "23505";
 
 const invalid = (message: string): Error => statusError("VALIDATION_ERROR", message, 422);
 const conflict = (code: string, message: string): Error => statusError(code, message, 409);
-
-/** Parses a JSON object body. Malformed JSON and non-object bodies are 422, not 500. */
-async function readObjectBody(request: Request): Promise<Record<string, unknown>> {
-  let parsed: unknown;
-  try {
-    parsed = await request.json();
-  } catch {
-    throw invalid("Request body must be valid JSON.");
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    throw invalid("Request body must be a JSON object.");
-  }
-  return parsed as Record<string, unknown>;
-}
 
 /** Validates the name and description fields. `requireName` is true for create. */
 function parseRoleFields(

@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { sendOryCMSEmail } from "@/email";
+import { redactDetail } from "@/lib/route-guards";
 import type { OryCMSTokenType } from "@/tokens";
 
 // Frontend page paths that consume each token type.
@@ -67,7 +68,7 @@ export async function dispatchOryCMSTokenLink(
   } catch (err) {
     console.error(
       `[orycms] Failed to send ${type} email:`,
-      err instanceof Error ? err.message : "unknown error",
+      redactDetail(err instanceof Error ? err.message : "unknown error"),
     );
     return { emailed: false };
   }

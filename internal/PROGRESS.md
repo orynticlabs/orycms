@@ -70,7 +70,7 @@ Shared mechanics every sub-task below follows:
 | U1-3.5 | Database | `database/migrations`, `database/schemas` (2 files, 3 methods) | **PARTIAL (2026-10-06).** `packages/core/src/next/routes/database.ts`: driver and connection detail no longer reaches responses (generic 500 with `INTERNAL_ERROR`; failed install returns `SCHEMA_INSTALL_FAILED` with migration IDs only; detail logged with credentials redacted). **Root still leaks** — see P2-25 and P2-26. Not registered in the dispatcher (owner decision: until U1-3.11). | Parity-proof + tests + thin-wrap. `POST database/migrations` calls `bootstrapOryCMS()` (the full schema installer) — exercise this against a real test DB, not just a mock, given it's the exact code path U4-3's atomicity work will later change. | `database.test.ts` covering all 3 routes; wired; root files thin-wrapped. Explicitly note in the test file that `POST` here will need re-verifying once U4-3 lands (transactional install). | **Moderate risk — do after the read-mostly modules.** `POST database/migrations` is the one route in this whole plan that can leave the schema in a different state if something goes wrong; do it once the thin-wrapper pattern (U1-3.1–U1-3.4) is proven out, not as an early sub-task. |
 | U1-3.6 | Roles | `roles`, `roles/[id]`, `roles/[id]/permissions` (3 files, 7 methods) | **PARTIAL (2026-10-06).** `packages/core/src/next/routes/roles.ts`: now validates names, descriptions and permission-id lists (422); refuses changes to built-in roles and to the caller's own role (409); refuses to delete a role that has users (409 `ROLE_IN_USE`); refuses permission ids that do not exist (422) and grants the caller cannot make itself (403); maps a unique-name clash to 409; and returns no driver text. **Root has the escalation and silent-clear gaps** — see P1-8. Not registered in the dispatcher (owner decision: until U1-3.11). | Parity-proof (RBAC role/permission CRUD — check the exact permission-check and audit-log calls match) + full test coverage (today's coverage is zero for this module in either tree) + thin-wrap. | `roles.test.ts` covering all 7 routes incl. at least one unauthorized-permission-escalation-attempt test (e.g. a non-admin trying to grant itself a permission via `PUT roles/:id/permissions`); wired; root files thin-wrapped. | **Security-sensitive — extra test requirement, explicit escalation-path test.** Roles gate everything else in the system; a parity miss here (e.g. a missing permission check) is a privilege-escalation bug, not a cosmetic one. |
 | U1-3.7 | Users | `users`, `users/[id]` (2 files, 5 methods) | **Already ported** — `packages/core/src/next/routes/users.ts` (124 lines); spot-diffed against root during this planning pass — same business logic, different error-construction idiom (root uses ad hoc `Object.assign(new Error(...), {...})`, core uses a `statusError()` helper) — reconcile which idiom wins before wiring (recommend adopting core's `statusError()` consistently, since it's already used elsewhere in the dispatcher; note the choice either way). | Full test coverage (zero today) incl. password-handling paths (`createOryCMSUser`/`updateOryCMSUser` with a password field) and a test proving a non-privileged caller cannot `PATCH`/`DELETE` another user's account. | `users.test.ts` covering all 5 routes incl. the privilege-check test above; wired; root files thin-wrapped. | **Security-sensitive — extra test requirement, same reasoning as roles.** Do right after roles since the two share the same class of risk (authZ-on-another-principal) and the same test pattern can be reused. |
-| U1-3.8 | Media | `media`, `media/[id]`, `media/folders` (3 files, 7 methods) | **Already ported** — `packages/core/src/next/routes/media.ts` (139 lines vs. 220 combined root lines — more condensed, uses `NextResponse`-adjacent patterns in the root version that need re-checking against the dispatcher's Web-`Response`-only contract). | Parity-proof with extra care on the upload path (`uploadOryCMSMedia`) — confirm request-body/multipart handling behaves identically through the dispatcher's generic `Request` as it does through `NextRequest` today, since this is the one module where the two runtime types could plausibly behave differently (streaming bodies). Full test coverage (zero today). | `media.test.ts` covering all 7 routes incl. at least one upload-path test exercising the actual `Request`-body reading the dispatcher uses; wired; root files thin-wrapped. | **Moderate-to-higher risk — do after roles/users, before collections.** Not a security/authZ risk particularly (same guard pattern as everything else), but the only module with a real chance of a runtime-behavior gap (`NextRequest` vs. generic `Request` body handling), so budget real verification time, not just a logic diff. |
+| U1-3.8 | Media | `media`, `media/[id]`, `media/folders` (3 files, 7 methods) | **Already ported** — `packages/core/src/next/routes/media.ts` (139 lines vs. 220 combined root lines — more condensed, uses `NextResponse`-adjacent patterns in the root version that need re-checking against the dispatcher's Web-`Response`-only contract). | Parity-proof with extra care on the upload path (`uploadOryCMSMedia`) — confirm request-body/multipart handling behaves identically through the dispatcher's generic `Request` as it does through `NextRequest` today, since this is the one module where the two runtime types could plausibly behave differently (streaming bodies). Full test coverage (zero today). | `media.test.ts` covering all 7 routes incl. at least one upload-path test exercising the actual `Request`-body reading the dispatcher uses; wired; root files thin-wrapped. | **PARTIAL (2026-10-06).** Split into U1-3.8a (done: upload, shared validation, delete safety, paging, safe errors) and U1-3.8b (serving headers and the SVG policy; needs an owner decision and a serving route, not started). See the 2026-10-06 log entry. Root `app/api/orycms/media/**` is unchanged in this task; its gaps are logged as P1-10 and P2-32. | **Moderate-to-higher risk — do after roles/users, before collections.** Not a security/authZ risk particularly (same guard pattern as everything else), but the only module with a real chance of a runtime-behavior gap (`NextRequest` vs. generic `Request` body handling), so budget real verification time, not just a logic diff. |
 | U1-3.9 | Collections (incl. content, fields, migration-preview, publish) | 10 files, 20 methods — by far the largest module | **Already ported** — `packages/core/src/next/routes/collections.ts` (349 lines), already partially tested (`collections.test.ts` covers exactly 1 of the 20 routes: `GET collections`, via 3 tests). | The other 19 of 20 routes need test coverage added. This is the biggest sub-task by test-writing volume (not by porting — the logic is already there) — consider whether it still fits one session; if not, split further by sub-resource (e.g. `U1-3.9a` collections+fields, `U1-3.9b` content+publish, `U1-3.9c` migrations+migration-preview) at execution time rather than guessing the split now. | `collections.test.ts` extended to cover all 20 routes; wired (collections was the one module `dispatcher.test.ts`'s "does not ship advanced module routes" test was written against — that test must be updated here); root files (10 of them) thin-wrapped. | **Do second-to-last, not first, despite being "the obvious one."** It's the biggest surface and the module most other work (admin UI's collection builder) depends on — do it once every smaller sub-task above has already proven out the thin-wrapper pattern, the test-writing pattern, and the parity-review process, so the one truly large sub-task benefits from a settled process instead of inventing one under its own weight. |
 | U1-3.10 | Stub routes (plugins, SEO, commerce) | `plugins`, `plugins/[slug]`, `seo/redirects`, `seo/redirects/[id]`, `seo/sitemap`, `customers`, `orders`, `products` (8 files, 15 methods, all 501) | **Already ported, verified identical** — `packages/core/src/next/routes/stubs.ts` (49 lines) hand-confirmed during this planning pass to match the root's 501 responses and RBAC guards exactly, route-for-route. | Essentially none — wire + a single `stubs.test.ts` asserting each of the 15 routes returns 401/403/501 appropriately + thin-wrap. | `stubs.test.ts` added; wired; 8 root files thin-wrapped. | **Lowest risk in the whole plan — do last anyway**, not because it's risky but because U2-2 ("Delete the remaining 501-stub routes") will delete this module's root files entirely a phase later — no point polishing thin wrappers for code about to be deleted. Consider skipping the thin-wrap step here and just wiring + deleting directly once U2-2's turn comes, owner's call. |
 | U1-3.11 | Mount the dispatcher for external consumers + retire the narrow MVP-surface test | n/a (docs + root scaffolding, not a route module) | n/a | (a) Add `app/api/orycms/[...ory]/route.ts` calling `createOryCMSRouteHandlers()` from `@ory-cms/core/next` as a **second, parallel** route — Next.js allows a catch-all to coexist with more specific static routes only if the static ones win, so this needs an explicit routing-precedence check, or (more likely) this file only gets added once the root app's own 44 thin wrappers are retired in a later phase (owner's call, flag as open question). (b) Replace `mvp-surface.test.ts`'s hard-coded 6-route assertion with one that asserts `ORYCMS_ROUTES` now has all 9 modules' routes (44 + the thin-wrap adapter's own route count, whatever that nets out to). (c) Update package docs/README snippet for `createOryCMSRouteHandlers()` to show it now serves the full API, not just auth. | A real external-consumer smoke test (reuse the pack-and-install pattern from U1-1/U1-2) hits a non-auth endpoint (e.g. `GET /api/orycms/audit`) through the catch-all and gets a real (not 404/501-for-missing-route) response. `mvp-surface.test.ts` renamed/rewritten and green. | Do after every module sub-task above (U1-3.1–U1-3.10) so there's a full surface to prove, not a partial one. Low technical risk, but it's the first time anything in this repo actually proves the documented `createOryCMSRouteHandlers()` pattern end-to-end — treat the proof step as mandatory, not optional. |
@@ -162,8 +162,13 @@ Shared mechanics every sub-task below follows:
 | P2-28 | P2 | Root roles routes, smaller items: (a) `DELETE` on a role that still has users assigned succeeds, and the FK `SET NULL` silently strips those users of their role and permissions (`orycms_users.roleId` has no cascade). `packages/core` refuses with `ROLE_IN_USE`. (b) `setOryCMSRolePermissions` runs a `DELETE` then a loop of `INSERT`s without a transaction, so a failure partway leaves the role with a partial permission set. Not changed here (it's an engine change in both trees; scheduled with the other install-atomicity work, U4-3, unless the owner prefers otherwise). (c) `getOryCMSRole` throws `UNAUTHORIZED` with status 404 for a missing role, so the code is misleading. `packages/core`'s route keeps that behaviour unchanged for now. (d) A duplicate role name surfaces as a driver error (`23505`) and, through the shared mapper, as a 400 with driver text (P2-25). `packages/core` maps it to `ROLE_NAME_TAKEN` (409). | TODO | Found 2026-10-06 during U1-3.6. |
 | P2-29 | P2 | **Owner to confirm the roles rules implemented in `packages/core` (U1-3.6).** (1) Built-in roles cannot be renamed, re-described, deleted, or have their permission set changed (409 `BUILT_IN_ROLE`). The stricter reading is deliberate: the owner can loosen it, e.g. to allow permission edits on Editor/Author/Viewer. (2) The caller cannot change or delete the role it holds (409 `SELF_ROLE`). (3) A role with users cannot be deleted (409 `ROLE_IN_USE`). (4) Role names are limited to 64 characters, letters, digits, space, `_` and `-`, starting with a letter. Descriptions are at most 500 characters. Permission-id lists are at most 500 entries. | TODO | Decision needed before the roles API is exposed (U1-3.11). |
 
-| P2-30 | **P1** | **`packages/core`'s shared `toErrorResponse` still has the driver-detail leak.** `packages/core/src/lib/route-guards.ts` is a copy of root's mapper. The database and roles routes in `packages/core` now use `safeRouteError` (`route-errors.ts`) and are safe. Every other core route still calls `toErrorResponse`: audit, settings, users, the auth routes, and the rest of the core route modules. A driver error in any of them can return connection detail with status 400. Found 2026-10-06 while checking the premise that core was already safe. **Not changed in this task** (scope: root only). Fix by making core's `toErrorResponse` match root's new behaviour, or by moving every core route onto `safeRouteError`. Do this before the Neon browser check. | TODO | The 2026-10-06 instruction assumed core was already safe. It is safe only for the two routes switched over. |
+| P2-30 | **P1** | **`packages/core`'s shared `toErrorResponse` still has the driver-detail leak.** `packages/core/src/lib/route-guards.ts` is a copy of root's mapper. The database and roles routes in `packages/core` now use `safeRouteError` (`route-errors.ts`) and are safe. Every other core route still calls `toErrorResponse`: audit, settings, users, the auth routes, and the rest of the core route modules. A driver error in any of them can return connection detail with status 400. Found 2026-10-06 while checking the premise that core was already safe. **Not changed in this task** (scope: root only). Fix by making core's `toErrorResponse` match root's new behaviour, or by moving every core route onto `safeRouteError`. Do this before the Neon browser check. | DONE (2026-10-06, see Log) | The 2026-10-06 instruction assumed core was already safe. It is safe only for the two routes switched over. |
 
+| P2-31 | P3 | The token-link helper logs the raw error message when email delivery throws: `packages/core/src/auth/token-links.ts:72` and `orycms/auth/token-links.ts:70`. It is log-only, so no response carries it, but the log is not redacted. Not changed in P2-30: the redaction helper lives in `next/route-errors.ts`, and importing it from `auth/` would create an import cycle (`route-errors` → `http` → `auth`). Fix by moving `redactDetail` into a neutral module (e.g. `lib/redact.ts`) that both can import. | TODO | Found 2026-10-06 during P2-30's grep. Email-provider errors may include SMTP host or user; keep this in the log only. |
+
+| P1-10 | **P1** | **Root media upload accepts any client-declared type and size, and returns filesystem paths.** `orycms/media/media.engine.ts` (and the root route `app/api/orycms/media/route.ts`): the client's MIME type is trusted with no content check (SVG allowed, served from `public/uploads`); the whole body is buffered before the size limit applies; the client filename is stored as the display name with no sanitising; `MEDIA_UPLOAD_FAILED` embeds the raw write error, which contains the absolute upload path, and root's `errResponse` returns that message to the caller. Root's `errResponse` also `console.error`s the raw error object. Delete unlinks the stored path before removing the row, with no check that the path sits inside the upload directory, and a failed row delete leaves the file gone. Paging values are not validated. Found 2026-10-06 during U1-3.8a. **Root unchanged per owner instruction.** `packages/core` now has the fixes; the root engine differs from the core engine on purpose and must be reconciled at thin-wrap. | TODO | Verified by failing-then-passing tests in `media.test.ts`. Not reproduced against a running server. |
+| P2-32 | P2 | **Serving policy is undecided.** Neither tree has a serving route. Uploads are written under `public/uploads`, so Next serves them as static files with default headers: no `X-Content-Type-Options: nosniff`, no `Content-Disposition` for types that must not render inline, and SVG (allowed on upload only without script, handlers, or foreign objects) renders inline on the app origin. **Owner decision needed:** (a) drop SVG from the allowlist, (b) serve SVG and HTML-like types as attachments through a route with fixed headers, or (c) keep static serving and accept the risk. U1-3.8b is blocked on this decision. | TODO | Found 2026-10-06 during U1-3.8a. Not fixed here: serving is a policy decision and a new route, not a parity fix. |
+| P3-10 | P3 | Media responses include `uploadedBy` (the uploader's email) for any holder of `media:read`. Not a credential, but a privacy decision for the owner. | TODO | Found 2026-10-06 during U1-3.8a. Left in place. |
 
 Independent hygiene items, not part of the unification plan, still open: **P2-2** (untrack generated/internal files from git, per `internal/FILE_CLASSIFICATION.md`'s proposed commands, still requires owner approval) and **P2-13** (new, 2026-10-04 — resolve the remaining 13 dev-toolchain-only `npm audit` findings left after P0-3: ESLint's `@next/eslint-plugin-next` → `fast-glob@3.3.1` → `micromatch` → `braces` chain, plus Vitest/Vite/esbuild/browserslist/baseline-browser-mapping/js-yaml/nanoid. None are runtime-reachable — all 13 are devDependencies only. `npm audit fix` (non-force, confirmed via `--dry-run`) reports fixes available for all of them, but deliberately not run as part of P0-3 since it's out of that task's scope (pinning `next`, not a general dev-toolchain audit sweep) — running it is this follow-up's actual work). **P0-3 itself is now DONE** — see the Done table above.
 
@@ -200,6 +205,100 @@ Deferred / backlog, genuinely untouched by this plan (real future feature work, 
 ---
 
 ## Log (newest first)
+
+### 2026-10-06 — P2-30 done: core's shared mapper, dispatcher catch-all, and route-level leak sweep (working tree, uncommitted — no branch created)
+
+**Scope:** `packages/core` only, plus the one-line rule the owner allowed for root (none was needed; see step 4). No dispatcher registration, version bumps, export changes, or publish. Nothing run against a database.
+
+**Lint baseline before starting:** `npm run lint` at root → `210 problems (210 errors, 0 warnings)`, exit 1. Final: `206 problems`, exit 1. The drop is pre-existing prettier errors in files this task formatted. No new errors; the scoped lint on every changed file is rc=0.
+
+**0. Decisions recorded:** P2-30 is fixed before the Neon browser check and before the users routes.
+
+**1. Mappers and every caller (before any change)**
+
+Core has two mappers, not one:
+- `packages/core/src/lib/route-guards.ts` → `toErrorResponse` (the leaking one, P2-30).
+- `packages/core/src/next/route-errors.ts` → `safeRouteError` (the safe helper from the roles and database work).
+
+`toErrorResponse` call sites (33 in 5 route modules):
+- `next/routes/auth-tokens.ts`: 16
+- `next/routes/users.ts`: 7
+- `next/routes/settings.ts`: 6
+- `next/routes/audit.ts`: 2
+- `next/routes/stubs.ts`: 2
+
+`safeRouteError` callers before this task: `next/routes/database.ts` (3) and `next/routes/roles.ts` (7 handlers).
+
+Dispatcher path: `packages/core/src/next/dispatcher.ts` — the `catch {}` around `route.handler(ctx)` returned a flat generic 500 and logged nothing.
+
+Routes that did not use either mapper: `auth.ts`, `collections.ts`, `auth.ts`'s `setup` and `setup-status`. They pass only `OryCMSAuthError` messages through (see step 4), and rethrow everything else to the dispatcher.
+
+**2. The fix**
+
+- `route-errors.ts` (single source of truth): deliberate errors pass through only when their `statusCode` is in an allowlist `400, 401, 403, 404, 405, 409, 410, 422, 429`. Plugin and manifest error classes pass through with 400, or 404 for `*_NOT_FOUND`. `field` and `issues` are carried through. Everything else is a generic 500 `INTERNAL_ERROR` with detail logged through `redactDetail` (URLs → `[redacted-url]`, `password=` → `password=[redacted]`).
+- `lib/route-guards.ts`: `toErrorResponse` now delegates to `safeRouteError("route", err)`. Its own `StatusfulError` interface and `hasStatusCode` were removed (now unused). All 33 call sites inherit the fix without edits.
+- `dispatcher.ts`: the bare `catch` now calls `safeRouteError("dispatcher", err)`, so it returns the generic envelope and logs redacted detail.
+
+**3. Grep findings (both trees)**
+
+Searched both trees for `error.message`, `err.message`, `String(err)`, `String(error)`, `.stack`, `JSON.stringify(err)`, `message: err`, and `error:` placed into a body.
+
+| # | Where | What | Verdict |
+|---|---|---|---|
+| G1 | `packages/core/src/lib/route-guards.ts` (`toErrorResponse`) | Passed any string-`code` error's message through, status 400 | **Fixed** (delegates to `safeRouteError`) |
+| G2 | `packages/core/src/next/dispatcher.ts` (bare `catch`) | Flat generic 500, no log | **Fixed** (logs redacted, shared helper) |
+| G3 | `packages/core/src/next/routes/{audit,settings,users,stubs,auth-tokens}.ts` (33 calls) | Via G1 | **Fixed** by G1 |
+| G4 | `packages/core/src/next/routes/auth.ts:51,88,130`, `collections.ts:46` | `jsonError(error.code, error.message, error.statusCode)` only inside `if (error instanceof OryCMSAuthError)`; other errors are rethrown | **OK**: deliberate class, guarded |
+| G5 | `packages/core/src/next/routes/auth.ts:52` | Fixed text "Setup failed. Check ORYCMS_DATABASE_URL." | **OK**: names the variable, no value |
+| G6 | `packages/core/src/auth/token-links.ts:72` | `console.error(..., err.message)` on email failure | **Log-only, not fixed** (import cycle if fixed here). Logged as **P2-31** |
+| G7 | `packages/core/src/rbac/rbac.engine.ts:184` | `OryCMSAuthError("FORBIDDEN", \`Permission denied: ${resource}:${action}.\`, 403)` | **OK**: interpolates the resource and action names only |
+| R1 | Root `app/api/orycms/**` — 28 routes with inline `if (err instanceof OryCMS…Error) return {code, message: err.message}` blocks (e.g. `collections/route.ts:25`, `media/route.ts:10`, `auth/setup/route.ts:53`, `auth/login/route.ts:49`) | Message passed for the named classes | **OK**: every `err.message` in a response is guarded by an `instanceof` check (checked by script: 0 unguarded). No change needed. |
+| R2 | Root `orycms/auth/token-links.ts:70` | Same as G6 | **Log-only**, logged as P2-31 |
+| R3 | Root `orycms/lib/route-guards.ts:81` | Plugin/manifest pass-through | **OK** (deliberate, root-side) |
+
+Root needed no one-line changes for step 4, so **root is unchanged in this task** (apart from nothing; the root mapper was fixed in the previous task).
+
+**4. Behaviour changes**
+
+- Core: any error without a known deliberate status, or without being a plugin or manifest error, now returns generic 500 `INTERNAL_ERROR` (was 400 with its message when it carried a string `code`). This covers the 33 call sites and the dispatcher.
+- Core: a deliberate `statusCode` outside the allowlist (e.g. 503) is now a 500, not passed through.
+- Core: the dispatcher's catch-all now logs redacted detail (was silent).
+- Core: `safeRouteError` now carries `field` and `issues` on deliberate errors (matches the old `toErrorResponse`).
+
+**5. Tests (test-first, real output)**
+
+New: `packages/core/src/next/__tests__/error-leaks.test.ts` (16 tests) and `packages/core/src/next/__tests__/dispatcher-errors.test.ts` (3 tests), plus the adapted `packages/core/src/lib/__tests__/route-guards.test.ts`.
+
+Before the fix: `error-leaks` + `dispatcher-errors` → **9 failed, 7 passed (16)**. The 9 failures: the core mapper returned 400 with a fake URL in the body for a `28P01` error; logs were empty for the mapper and the dispatcher; an arbitrary coded error passed through (400); a `503` deliberate status passed through; `issues` and `field` were dropped by `safeRouteError`; and the audit, settings and users list routes each returned 400 with driver text. The 7 that passed already: deliberate 403 pass-through, plugin 400/404, manifest 400, the dispatcher's generic body, and the leak-free checks on the plain-error paths.
+
+After the fix: `error-leaks` + `dispatcher-errors` + `route-guards` → **27 passed (27)**. Full core: `Test Files 49 passed (49)`, `Tests 984 passed (984)`.
+
+Adapted existing test: `packages/core/src/lib/__tests__/route-guards.test.ts` had two cases that relied on the old pass-through for a plain `Object.assign(new Error(), {code})`. They now use `OryCMSPluginError` instances, the same change as in root. Assertions unchanged.
+
+**6. Changed files**
+
+- `packages/core/src/next/route-errors.ts` (rule, allowlist, plugin and manifest pass-through, `field` and `issues`)
+- `packages/core/src/lib/route-guards.ts` (`toErrorResponse` delegates; unused interface removed)
+- `packages/core/src/next/dispatcher.ts` (catch-all uses `safeRouteError`)
+- `packages/core/src/lib/__tests__/route-guards.test.ts` (two cases use the plugin class)
+- New: `packages/core/src/next/__tests__/error-leaks.test.ts`, `packages/core/src/next/__tests__/dispatcher-errors.test.ts`
+- `internal/PROGRESS.md`: this entry, the decision, P2-30 marked DONE, new P2-31.
+
+**7. Quality gate (real output)**
+
+- Core: typecheck rc=0 (0 TS errors). `npx vitest run` → `Test Files 49 passed (49)`, `Tests 984 passed (984)`. Build rc=0. Scoped eslint rc=0.
+- Root: typecheck rc=0. Lint rc=1, **206 errors** (baseline 210; none new; the scoped lint on the changed core files is rc=0). `npm test` rc=0 → `Test Files 63 passed (63)`, `Tests 1392 passed (1392)`. `npm run build` rc=0.
+- Housekeeping: root typecheck regenerated `tsconfig.tsbuildinfo`; restored from `HEAD` with `git show` (read-only).
+- Git state observed: `HEAD` is now `df7fe3a` (merge of PR #27, `fix/root-error-mapper`), so the earlier tasks' changes are in committed history and `git status` shows only this task's files. No git write commands were run by me.
+
+**8. Not done / UNVERIFIED**
+
+- **Not done:** P2-31 (moving `redactDetail` into a neutral module, which also covers the two token-link log lines); the other route modules' own catch blocks beyond the shared mappers (none were found that put detail in a body); dispatcher registration (U1-3.11).
+- **UNVERIFIED:** live behaviour against a real database. The grep was text-based, so a leak built from a value that never names `error`, `err`, or `message` would not be caught. I read each root `err.message` site's guard, not every route's full body. Redaction covers URL-shaped and `password=` text only.
+- **Behaviour change to review:** core's `toErrorResponse` now returns 500 for driver errors and for coded errors that aren't plugin or manifest classes; the 33 call sites in core rely on this.
+
+**Suggested branch (not created):** `fix/core-error-mapper-and-dispatcher`
+**Suggested commit message (generic):** `fix(core): return generic errors from the shared mapper and dispatcher, and log detail redacted`
 
 ### 2026-10-06 — P2-25 and P2-26 done: root error mapper and failed-install response (working tree, uncommitted — no branch created)
 
@@ -893,3 +992,88 @@ Behaviour change to note: `limit=1e2` used to be accepted (`Number("1e2")` = 100
 | 2026-10-06 (**accepted by owner**) | A failed install now returns `success:false` with status 500. | Matches the error envelope every other route uses. Accepted as a behaviour change. | Owner |
 | 2026-10-06 (**confirmed by owner**) | Built-in roles are **fully locked** in the beta: no rename, no delete, no permission changes. The caller's own role cannot be edited or deleted (P2-29). | Safest default while the role model is still settling; loosening later is a deliberate, reviewed change. | Owner |
 | 2026-10-06 (**confirmed by owner**) | P1-8 (root roles gaps) is fixed at thin-wrap. P2-28 is scheduled later. | Root roles routes are thin-wrapped in U1-3.6's wrap step; P2-28 is lower priority than the escalation fix. | Owner |
+| 2026-10-06 (**confirmed by owner**) | P2-30 (core's shared error mapper) is fixed before the Neon browser check and before the users routes. | Core's mapper is the one the users and remaining route modules depend on. | Owner |
+| 2026-10-06 (**confirmed by owner**) | P2-30 is done. P2-31 is fixed as step 0 of U1-3.7. | Redaction is shared by both token-link logs and the mapper. | Owner |
+| 2026-10-06 (**confirmed by owner**) | P2-21 is handled in U1-3.7: audit rows for unknown accounts must not store the raw requested email. | Closes the privacy question logged in P2-21. | Owner |
+| 2026-10-06 (**confirmed by owner**) | Root changes in U1-3.7 are limited to the one-line P2-31 redaction in `orycms/auth/token-links.ts`. Everything else in root stays unchanged. | Keeps root as the reference while packages/core is brought up to it. | Owner |
+
+### 2026-10-06 — U1-3.7 done: users routes (core), P2-31 redaction, P2-21 audit row (working tree, uncommitted — no branch created)
+
+**Step 0 (P2-31):** `redactDetail` moved to neutral `packages/core/src/lib/redact.ts` (no imports, no cycle). `next/route-errors.ts` and `auth/token-links.ts` (core) import it; email-failure log line redacted. Root `orycms/auth/token-links.ts`: one import line and one log line changed (the owner allowed the one-line redaction; the import was needed for it). Test: `packages/core/src/auth/__tests__/token-link-log.test.ts` and `orycms/auth/__tests__/token-link-log.test.ts` assert a fake SMTP URL and `password=` never reach the log.
+
+**P2-21:** core forgot-password writes `metadata: { found: false }` for unknown accounts (no email). Test `packages/core/src/next/__tests__/forgot-password-audit.test.ts`. Root `app/api/orycms/auth/forgot-password/route.ts:35` still stores `{ email, found: false }` — logged as P2-21 root side below (root change not allowed beyond P2-31).
+
+**Users routes (core, `packages/core/src/next/routes/users.ts`):** validation (email shape and length, password 8–72 bytes, roleId string-or-null and must exist, status enum, JSON object body, unknown keys ignored); create/update refuse a role whose permissions the caller does not hold (403); update/delete refuse a target whose current role the caller does not hold (403); self role change, self deactivation and self delete refused (409 `SELF_ACTION`); last active Owner cannot be deleted, demoted or deactivated (409 `LAST_OWNER`); duplicate email → 409 `EMAIL_TAKEN`; every error through `safeRouteError`. `readObjectBody` moved to shared `next/request-body.ts` (roles.ts now imports it).
+
+**Parity (root `app/api/orycms/users/**` vs core):** same paths (`users`, `users/:id`), methods GET/POST/PATCH/DELETE, same permissions (`users:read|create|update|delete`), same engine (`orycms/users/users.repo.ts` identical in both trees), same response fields (`id, email, status, roleId, roleName`). Root: no body validation (missing email only), no privilege or self checks, no last-owner check. Core now validates and enforces those.
+
+**Answers to step 2 (both trees):**
+- Assign a stronger role / permissions not held: **root yes** (Admin has `users:update` and can set `roleId` to Owner) → logged P1-9. **Core no**: refused (403).
+- Deactivate/delete/re-role yourself: **root yes** → P1-9. **Core no** (409).
+- Demote/deactivate/delete the last Owner: **root yes** → P1-9. **Core no** (409).
+- Validation: **root minimal** (email presence only). **Core full** (see above). Name: no name field exists in the users schema, so none validated.
+- Safe fields: **both safe** (no `passwordHash` in SELECT/RETURNING; tested).
+- Session revocation: sessions are checked on every request with `u.status = 'active'` and roleName joined fresh, and `orycms_sessions.userId` cascades on user delete. So deactivation and role change take effect immediately and deletion removes sessions. Root and core match this; no explicit revoke call is needed.
+
+**Tests (test-first):** `packages/core/src/next/__tests__/users.test.ts` (new, 50+ cases: auth/403/401, safe fields, validation, privilege, self, last owner, driver errors), `forgot-password-audit.test.ts` (3), `auth/__tests__/token-link-log.test.ts` (1), root `orycms/auth/__tests__/token-link-log.test.ts` (1). Before the change: 23 failed of the new users/forgot-password/token-link tests (expected gaps). After: all pass.
+
+**Quality gate:** root lint baseline **206**, final **206** (no new errors); root typecheck 0; root tests 64 files / 1393 passed; root build 0. Core: typecheck 0; full suite 52 files / 1028 passed, exit 0 (rerun after the machine was overloaded; an earlier run timed out three bcrypt-heavy tests under load); build 0; scoped lint 0.
+
+**Root findings (logged, not fixed):**
+- **P1-9:** root `app/api/orycms/users/route.ts` and `users/[id]/route.ts`: any holder of `users:update`/`users:create` (Admin by default) can assign `roleId` to Owner, edit or delete Owner accounts, deactivate or delete themselves, and remove the last Owner. Fix at thin-wrap with core's rules.
+- **P2-21 (root):** `app/api/orycms/auth/forgot-password/route.ts:35` stores the requested email on unknown-account audit rows. Fix at thin-wrap.
+
+**Changed files:** `packages/core/src/lib/redact.ts` (new), `packages/core/src/next/route-errors.ts`, `packages/core/src/auth/token-links.ts`, `packages/core/src/next/routes/users.ts`, `packages/core/src/next/routes/roles.ts`, `packages/core/src/next/request-body.ts` (new), `packages/core/src/next/routes/auth-tokens.ts`, `orycms/auth/token-links.ts`, tests: `packages/core/src/next/__tests__/{users,forgot-password-audit}.test.ts`, `packages/core/src/auth/__tests__/token-link-log.test.ts`, `orycms/auth/__tests__/token-link-log.test.ts`; `internal/PROGRESS.md`.
+
+**Suggested branch (not created):** `fix/users-routes-privilege-and-redaction`
+**Suggested commit message (generic):** `fix: restrict user role changes, guard the last owner, and redact email-failure logs`
+
+**UNVERIFIED:** live database behaviour; whether root's Admin default permissions match a deployed database; real SMTP error formats (only a fake message was tested); the machine-load timeouts were cleared by rerunning, not by changing any test timeouts.
+| 2026-10-06 (**confirmed by owner**) | U1-3.7 is done. P1-9 and the root side of P2-21 are fixed at thin-wrap. | Root users routes stay unchanged until their wrap step; the escalation fix ships with it. | Owner |
+| 2026-10-06 (**confirmed by owner**) | bcrypt cost in tests is lowered or mocked in the CI phase (flaky timeouts under load). | Real bcrypt at cost 12 makes some tests exceed the default timeout on a loaded machine. | Owner |
+| 2026-10-06 (**confirmed by owner**) | The last-Owner check is check-then-write. A race is a post-beta follow-up. | Closing the race needs a transaction or a row lock, which is a post-beta change. | Owner |
+
+### 2026-10-06 — U1-3.8a done: media upload, shared validation, delete safety, paging (working tree, uncommitted — no branch created)
+
+**Scope:** core only (`packages/core/src/media/`, `packages/core/src/next/routes/media.ts`, `route-errors.ts`). Root `app/` and `orycms/` NOT changed. No dispatcher registration, version bumps, export changes, or publish. Tests write only inside an OS temp directory that each test creates and removes; no repo or upload folder is touched. Nothing run against a database.
+
+**Lint baseline:** root `206 problems`, exit 1. Final: `206`, exit 1, none in media files. Scoped lint on the changed core files: exit 0.
+
+**Decisions recorded:** U1-3.7 done; P1-9 and root P2-21 fixed at thin-wrap; bcrypt cost in tests lowered or mocked in CI; last-Owner check is check-then-write (race is post-beta).
+
+**Parity (root `app/api/orycms/media/**` vs core `routes/media.ts`)** — same paths, methods, permissions (`media:read|create|update|delete`), same engine logic except as noted:
+- `GET media`: root `parseInt` with no range check (NaN and negative values reach SQL → driver error); core 422 for non-numeric or out-of-range `page`/`limit`, and for unknown `sort`/`dir`/`type`.
+- `POST media`: root takes `formData`, no size check before buffering, no file-count check, client name stored as display name; core checks declared Content-Length before reading, requires exactly one file, sanitises the display name, and returns 201 with safe fields.
+- `GET/PATCH/DELETE media/:id`: root has no id format check; core requires a UUID (422). PATCH validates field types and lengths.
+- Folders: same paths; core guards errors and checks name length.
+- Response shape: both return `rowToAsset` output, which has no `file_path`. Both expose `uploadedBy` (P3-10).
+
+**Answers (step 2):**
+- *MIME allowlist:* both trees, 13 types. Client-declared type is trusted in root; core now also checks leading bytes (`matchesClaimedType`): JPEG, PNG, GIF, WebP, PDF, MP4, WebM, Ogg, DOC, DOCX, UTF-8 text/CSV, and SVG with no script, foreignObject, event handler, or javascript: URL.
+- *Size before buffering:* root none; core refuses a declared Content-Length above 51 MB with 413 before reading. A missing or wrong Content-Length is still not caught (see UNVERIFIED).
+- *Files per request:* root takes the first; core requires exactly one (422).
+- *Filenames:* stored name is a random UUID plus an extension from a fixed map in both trees (client name never used for storage). Core also sanitises the display name (base name only, controls and NUL stripped, `..` refused, max 255). Root stores the raw client name.
+- *Content checked against type:* root no; core yes (see above).
+- *SVG and HTML:* root allows SVG and serves it inline; HTML is not in the allowlist in either. Core allows SVG only if it passes the plain-SVG check. Serving policy is undecided (P2-32).
+- *Storage containment:* stored paths are built from the UUID and a fixed directory in both trees, so no traversal. Core delete also refuses to unlink a path outside the upload root.
+- *Absolute paths in responses:* root **yes** (`MEDIA_UPLOAD_FAILED` includes the raw write error, which contains the path; root's `errResponse` passes that message through) — P1-10. Core: generic message, error logged with redaction.
+- *Serving:* neither tree has a serving route. Files are in `public/uploads` (static serving). No nosniff, no Content-Disposition, no cache policy set by the app. P2-32.
+- *Update/delete permissions:* correct in both (`media:update`, `media:delete`).
+- *Delete removes only inside the upload directory:* root **no** (unlinks whatever the row says). Core yes.
+- *Row and file consistency:* root unlinks first, so a failed row delete leaves the file gone. Core deletes the row first; a failed row delete keeps the file.
+- *List/get safe fields:* both safe (no file path). Core also rejects non-UUID ids before querying.
+
+**Tests added:** `packages/core/src/next/__tests__/media.test.ts` (33 tests): auth 401/403 on each verb; success PNG stored under a UUID name with safe fields; oversized declared length (413, no write); disallowed type (415); PNG claim with JPEG bytes (415 mismatch); SVG with script (415); non-UTF-8 text (415); two files (422); no file (422); hostile filenames (`../../`, absolute path, NUL and control characters, 1000-character name); failed write and driver error (generic 500, no path, no driver text); list/get safe fields and non-UUID id (422); paging validation (422); PATCH validation (422); delete removes row and file; delete with non-UUID id removes nothing; delete never unlinks a path outside the upload root; row delete failure keeps the file; delete of unknown id (404); engine delete rejects an outside path. Also updated existing `media.engine.test.ts` fixtures to carry real file headers (the old zero-filled buffers were the case the new content check rejects) and pointed its delete test at the real upload root.
+
+Before the change: 19 of the new tests failed (expected gaps; one had a harness bug, fixed). After: all 33 pass; engine test file 23 pass; full core 1061 pass.
+
+**Changed files:** `packages/core/src/media/media.engine.ts`, `packages/core/src/media/media.errors.ts`, `packages/core/src/next/routes/media.ts`, `packages/core/src/next/route-errors.ts` (adds 413 and 415 to deliberate statuses), `packages/core/src/next/__tests__/media.test.ts` (new), `packages/core/src/media/__tests__/media.engine.test.ts`, `internal/PROGRESS.md`.
+
+**Root findings (logged, not fixed):** P1-10 (root upload and delete: client-trusted types, path disclosure in errors, unsafe delete, unvalidated paging). P2-32 (serving policy and SVG, owner decision). P3-10 (uploader email in responses). Root engine now differs from core engine on purpose; reconcile at thin-wrap.
+
+**Not done:** U1-3.8b (serving headers and SVG policy), blocked on P2-32.
+
+**UNVERIFIED:** a missing or wrong Content-Length is not caught by the pre-check, so an oversized body can still be buffered (a real limit needs a streaming parser or a body-size guard in the server); live database and real file serving; the byte checks are heuristic and do not cover every variant of each format; root's exact response bodies were read from code, not run.
+
+**Suggested branch (not created):** `fix/media-upload-validation-and-delete-safety`
+**Suggested commit message (generic):** `fix(core): validate media uploads, sanitise display names, and keep delete within the upload directory`

@@ -75,7 +75,8 @@ const forgotPassword: OryCMSRoute = {
         await recordOryCMSAuditLog({
           action: "forgot-password",
           resource: "auth",
-          metadata: { email, found: false },
+          // The requested address is not stored for unknown accounts (P2-21).
+          metadata: { found: false },
           ipAddress: request.headers.get("x-forwarded-for"),
           userAgent: request.headers.get("user-agent"),
         }).catch(() => {});

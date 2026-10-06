@@ -1,4 +1,5 @@
 import { sendOryCMSEmail } from "@/email";
+import { redactDetail } from "../lib/redact";
 import type { OryCMSTokenType } from "@/tokens";
 
 // Framework-agnostic: uses the Web platform Request (no next/server dependency).
@@ -69,7 +70,7 @@ export async function dispatchOryCMSTokenLink(
   } catch (err) {
     console.error(
       `[orycms] Failed to send ${type} email:`,
-      err instanceof Error ? err.message : "unknown error",
+      redactDetail(err instanceof Error ? err.message : "unknown error"),
     );
     return { emailed: false };
   }
