@@ -6,6 +6,8 @@ import {
   OryCMSContentError,
 } from "@/content";
 import { protectOryCMSAdminRoute, OryCMSAuthError } from "@/auth";
+import { requireOryCMSPermission } from "@/rbac";
+import { recordOryCMSAuditLog } from "@/audit";
 
 type RouteCtx = { params: Promise<{ collection: string; id: string }> };
 
@@ -29,9 +31,19 @@ const handleError = (err: unknown) => {
 // POST /api/orycms/collections/:collection/content/:id/publish — publish
 export async function POST(request: NextRequest, { params }: RouteCtx) {
   try {
-    await protectOryCMSAdminRoute(request);
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "publish");
     const { collection, id } = await params;
     const entry = await publishOryCMSContentEntry(collection, id);
+    await recordOryCMSAuditLog({
+      userId: session.userId,
+      action: "publish",
+      resource: "content",
+      resourceId: id,
+      metadata: { collection },
+      ipAddress: request.headers.get("x-forwarded-for"),
+      userAgent: request.headers.get("user-agent"),
+    }).catch((err) => console.error("[OryCMS] audit log failed:", err));
     return NextResponse.json({ success: true, data: entry });
   } catch (err) {
     return handleError(err);
@@ -41,9 +53,19 @@ export async function POST(request: NextRequest, { params }: RouteCtx) {
 // DELETE /api/orycms/collections/:collection/content/:id/publish — unpublish
 export async function DELETE(request: NextRequest, { params }: RouteCtx) {
   try {
-    await protectOryCMSAdminRoute(request);
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "publish");
     const { collection, id } = await params;
     const entry = await unpublishOryCMSContentEntry(collection, id);
+    await recordOryCMSAuditLog({
+      userId: session.userId,
+      action: "unpublish",
+      resource: "content",
+      resourceId: id,
+      metadata: { collection },
+      ipAddress: request.headers.get("x-forwarded-for"),
+      userAgent: request.headers.get("user-agent"),
+    }).catch((err) => console.error("[OryCMS] audit log failed:", err));
     return NextResponse.json({ success: true, data: entry });
   } catch (err) {
     return handleError(err);

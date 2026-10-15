@@ -14,6 +14,20 @@ export const SYSTEM_FIELDS = new Set([
   "_seoImage",
 ]);
 
+/**
+ * System fields a write body may never set directly, on create or update. This is
+ * a stricter subset of SYSTEM_FIELDS: identity and workflow-state columns the engine
+ * itself is responsible for, as opposed to SEO metadata fields, which an editor is
+ * meant to set through ordinary content writes.
+ */
+const IMMUTABLE_SYSTEM_FIELDS = new Set([
+  "id",
+  "createdAt",
+  "updatedAt",
+  "_isDraft",
+  "_publishedAt",
+]);
+
 /** The only filter operators the query layer knows how to translate to SQL. */
 export const VALID_QUERY_OPERATORS = new Set([
   "eq",
@@ -103,8 +117,17 @@ export function validateOryCMSContentData(
 ): void {
   const knownFields = new Map<string, OryCMSSchemaField>(collection.fields.map((f) => [f.name, f]));
 
-  // 1. Reject unknown fields
+  // 1. Reject identity/workflow columns the caller must never set directly, then
+  //    reject anything else that isn't a declared field.
   for (const key of Object.keys(data)) {
+    if (IMMUTABLE_SYSTEM_FIELDS.has(key)) {
+      throw new OryCMSContentError(
+        "FIELD_FORBIDDEN",
+        `"${key}" is managed by the system and cannot be set directly.`,
+        422,
+        key,
+      );
+    }
     if (!knownFields.has(key) && !SYSTEM_FIELDS.has(key)) {
       throw new OryCMSContentError(
         "FIELD_UNKNOWN",

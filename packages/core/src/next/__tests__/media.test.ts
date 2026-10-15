@@ -97,7 +97,7 @@ const MEDIA_ROW = {
   url: "/uploads/stored.png",
   file_path: "",
   folder_id: null,
-  uploaded_by: "admin@example.test",
+  uploaded_by: "admin-1",
   alt_text: null,
   caption: null,
   created_at: "2026-10-06T00:00:00.000Z",
@@ -106,16 +106,24 @@ const MEDIA_ROW = {
 
 /** The display name of the most recent insert, so the returned row reflects what was stored. */
 let lastInsertedName = "photo.png";
+/** The uploaded_by value of the most recent insert. */
+let lastInsertedUploadedBy = "admin-1";
 
 function defaultQuery(sql: string, params: unknown[] = []): { rows: unknown[]; count?: string } {
   if (sql.includes("CREATE TABLE")) return { rows: [] };
   if (sql.includes("INSERT INTO orycms_media") && !sql.includes("folders")) {
     lastInsertedName = String(params[0]);
+    lastInsertedUploadedBy = String(params[10]);
     return { rows: [{ id: VALID_ID }] };
   }
   if (sql.includes("SELECT COUNT(*)")) return { rows: [{ count: "1" }] };
   if (sql.includes("SELECT * FROM orycms_media WHERE id")) {
-    return { rows: params[0] === VALID_ID ? [{ ...MEDIA_ROW, name: lastInsertedName }] : [] };
+    return {
+      rows:
+        params[0] === VALID_ID
+          ? [{ ...MEDIA_ROW, name: lastInsertedName, uploaded_by: lastInsertedUploadedBy }]
+          : [],
+    };
   }
   if (sql.includes("SELECT file_path FROM orycms_media")) {
     return {
@@ -159,8 +167,12 @@ function ctxFor(
     form?: FormData;
     query?: string;
     headers?: Record<string, string>;
+    rawRequest?: Request;
   } = {},
 ) {
+  if (opts.rawRequest) {
+    return { request: opts.rawRequest, params: {}, url: new URL(opts.rawRequest.url) };
+  }
   const path = opts.id ? `/api/orycms/media/${opts.id}` : "/api/orycms/media";
   const url = `http://localhost${path}${opts.query ? `?${opts.query}` : ""}`;
   const init: RequestInit & { duplex?: string } = {
@@ -175,6 +187,78 @@ function ctxFor(
   const request = new Request(url, init);
   const params: Record<string, string> = opts.id ? { id: opts.id } : {};
   return { request, params, url: new URL(url) };
+}
+
+/**
+ * Builds a raw multipart/form-data body carrying one small file field plus a second,
+ * non-file field padded to make the whole request reach `targetTotalBytes`. This lets a
+ * test cross the request-size limit without the "file" field itself being large, so a
+ * check that only looked at the parsed file's size (rather than the body as it is read)
+ * would miss it.
+ */
+function rawMultipartBody(
+  boundary: string,
+  file: { name: string; type: string; bytes: Buffer },
+  targetTotalBytes?: number,
+): Buffer {
+  const head = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${file.name}"\r\nContent-Type: ${file.type}\r\n\r\n`,
+  );
+  const paddingHead = Buffer.from(
+    `\r\n--${boundary}\r\nContent-Disposition: form-data; name="padding"\r\n\r\n`,
+  );
+  const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
+  const fixedBytes = head.length + file.bytes.length + paddingHead.length + tail.length;
+  const paddingSize =
+    targetTotalBytes !== undefined ? Math.max(0, targetTotalBytes - fixedBytes) : 0;
+  const padding = Buffer.alloc(paddingSize, 0x41);
+  return Buffer.concat([head, file.bytes, paddingHead, padding, tail]);
+}
+
+/** A ReadableStream that yields `body` in fixed-size chunks, so no Content-Length is implied. */
+function chunkedStream(
+  body: Buffer,
+  chunkSize: number,
+  onCancel?: () => void,
+): ReadableStream<Uint8Array> {
+  let offset = 0;
+  return new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (offset >= body.length) {
+        controller.close();
+        return;
+      }
+      const end = Math.min(offset + chunkSize, body.length);
+      controller.enqueue(new Uint8Array(body.subarray(offset, end)));
+      offset = end;
+    },
+    cancel() {
+      onCancel?.();
+    },
+  });
+}
+
+/** Builds a streamed multipart upload request with no implied Content-Length. */
+function streamedUploadRequest(opts: {
+  file: { name: string; type: string; bytes: Buffer };
+  targetTotalBytes?: number;
+  contentLengthHeader?: string;
+  onCancel?: () => void;
+}): Request {
+  const boundary = "----orycms-test-boundary";
+  const raw = rawMultipartBody(boundary, opts.file, opts.targetTotalBytes);
+  const headers: Record<string, string> = {
+    "content-type": `multipart/form-data; boundary=${boundary}`,
+  };
+  if (opts.contentLengthHeader !== undefined) {
+    headers["content-length"] = opts.contentLengthHeader;
+  }
+  return new Request("http://localhost/api/orycms/media", {
+    method: "POST",
+    headers,
+    body: chunkedStream(raw, 64 * 1024, opts.onCancel),
+    duplex: "half",
+  } as RequestInit & { duplex: string });
 }
 
 /** Calls a route the way the dispatcher does: a thrown error becomes a response. */
@@ -281,6 +365,22 @@ describe("media routes (packages/core)", () => {
       expect(Object.keys(body.data)).not.toContain("file_path");
       expect(JSON.stringify(body)).not.toContain(tmpRoot);
     });
+
+    it("records the uploader's id, not their email, as uploadedBy", async () => {
+      const res = await call(uploadRoute, {
+        form: multipart({ file: { name: "photo.png", type: "image/png", bytes: PNG_BYTES } }),
+      });
+
+      expect(res.status).toBe(201);
+      const insertCall = fakeQuery.mock.calls.find(
+        (c) =>
+          String(c[0]).includes("INSERT INTO orycms_media") && !String(c[0]).includes("folders"),
+      );
+      expect(insertCall?.[1]?.[10]).toBe(SESSION.userId);
+      const body = (await res.json()) as { data: { uploadedBy?: string } };
+      expect(body.data.uploadedBy).toBe(SESSION.userId);
+      expect(body.data.uploadedBy).not.toContain("@");
+    });
   });
 
   describe("upload: limits and types", () => {
@@ -321,15 +421,16 @@ describe("media routes (packages/core)", () => {
       expect(await listFiles(path.join(tmpRoot, "public", "uploads"))).toEqual([]);
     });
 
-    it("rejects an SVG that carries a script element", async () => {
-      const svg = Buffer.from(
-        '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
-      );
+    it("rejects an SVG upload with 415, even a plain one with no script content", async () => {
+      const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><circle r="1"/></svg>');
       const res = await call(uploadRoute, {
         form: multipart({ file: { name: "a.svg", type: "image/svg+xml", bytes: svg } }),
       });
 
       expect(res.status).toBe(415);
+      expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
+        "MEDIA_TYPE_NOT_ALLOWED",
+      );
       expect(await listFiles(path.join(tmpRoot, "public", "uploads"))).toEqual([]);
     });
 
@@ -359,6 +460,72 @@ describe("media routes (packages/core)", () => {
       const res = await call(uploadRoute, { form: multipart({ fields: { folderId: "x" } }) });
 
       expect(res.status).toBe(422);
+    });
+  });
+
+  describe("upload: size is enforced while the body is read", () => {
+    // MAX_FILE_BYTES + MULTIPART_OVERHEAD_BYTES. The "file" field itself stays a few
+    // bytes in every case here; a second, padded field pushes the whole request past
+    // (or just under) this line. A check that only looked at the parsed file's size
+    // would accept every one of the "exceeds" cases below — the request as a whole
+    // must be bounded while it is still being read.
+    const COMBINED_LIMIT = 50 * 1024 * 1024 + 1024 * 1024;
+    const UNDER_LIMIT_TOTAL = COMBINED_LIMIT - 1024;
+    const OVER_LIMIT_TOTAL = COMBINED_LIMIT + 2 * 1024 * 1024;
+    const SMALL_PDF = { name: "small.pdf", type: "application/pdf", bytes: PDF_BYTES };
+
+    it("rejects a chunked body with no Content-Length that exceeds the limit, with 413", async () => {
+      const request = streamedUploadRequest({
+        file: SMALL_PDF,
+        targetTotalBytes: OVER_LIMIT_TOTAL,
+      });
+      expect(request.headers.get("content-length")).toBeNull();
+
+      const res = await call(uploadRoute, { rawRequest: request });
+
+      expect(res.status).toBe(413);
+      expect(mediaWrites()).toHaveLength(0);
+      expect(await listFiles(path.join(tmpRoot, "public", "uploads"))).toEqual([]);
+    });
+
+    it("rejects a body whose real size exceeds the limit even when Content-Length claims otherwise, with 413", async () => {
+      const request = streamedUploadRequest({
+        file: SMALL_PDF,
+        targetTotalBytes: OVER_LIMIT_TOTAL,
+        contentLengthHeader: "100",
+      });
+
+      const res = await call(uploadRoute, { rawRequest: request });
+
+      expect(res.status).toBe(413);
+      expect(mediaWrites()).toHaveLength(0);
+      expect(await listFiles(path.join(tmpRoot, "public", "uploads"))).toEqual([]);
+    });
+
+    it("accepts a body just under the limit, with 201", async () => {
+      const request = streamedUploadRequest({
+        file: SMALL_PDF,
+        targetTotalBytes: UNDER_LIMIT_TOTAL,
+      });
+
+      const res = await call(uploadRoute, { rawRequest: request });
+
+      expect(res.status).toBe(201);
+      expect(await listFiles(path.join(tmpRoot, "public", "uploads"))).toHaveLength(1);
+    });
+
+    it("cancels the body reader as soon as the limit is hit, without reading the rest", async () => {
+      const onCancel = vi.fn();
+      const request = streamedUploadRequest({
+        file: SMALL_PDF,
+        targetTotalBytes: OVER_LIMIT_TOTAL,
+        onCancel,
+      });
+
+      const res = await call(uploadRoute, { rawRequest: request });
+
+      expect(res.status).toBe(413);
+      expect(onCancel).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -459,6 +626,23 @@ describe("media routes (packages/core)", () => {
 
       expect(res.status).toBe(200);
       expect(JSON.stringify(await res.json())).not.toMatch(/file_path|filePath|\/etc\/|tmp/);
+    });
+
+    it("get exposes the uploader's id only, never an email or display name", async () => {
+      const res = await call(getRoute, { id: VALID_ID });
+
+      const body = (await res.json()) as { data: { uploadedBy?: string } };
+      expect(body.data.uploadedBy).toBe(MEDIA_ROW.uploaded_by);
+      expect(body.data.uploadedBy).not.toContain("@");
+    });
+
+    it("list exposes the uploader's id only, never an email or display name", async () => {
+      const res = await call(listRoute);
+
+      const body = (await res.json()) as { data: Array<{ uploadedBy?: string }> };
+      for (const row of body.data) {
+        expect(row.uploadedBy).not.toContain("@");
+      }
     });
 
     it("get rejects an id that is not a UUID with 422 and never queries", async () => {

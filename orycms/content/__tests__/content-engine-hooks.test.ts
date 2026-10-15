@@ -5,6 +5,7 @@ import {
   updateOryCMSContentEntry,
   deleteOryCMSContentEntry,
   publishOryCMSContentEntry,
+  unpublishOryCMSContentEntry,
 } from "../content.engine";
 import { registerGlobalOryCMSHook, clearOryCMSHookRegistry } from "@/hooks";
 import type { OryCMSHookContext } from "@/hooks";
@@ -167,6 +168,37 @@ describe("Execution order", () => {
       return { rows: [{ ...row(), _isDraft: false, _publishedAt: NOW }] };
     });
     await publishOryCMSContentEntry("articles", "1", pool);
+
+    expect(order[1]).toBe("before");
+    expect(order[2]).toBe("db");
+    expect(order[3]).toBe("after");
+  });
+
+  it("unpublish: beforeUnpublish → DB write → afterUnpublish", async () => {
+    const order: string[] = [];
+    registerGlobalOryCMSHook(
+      "beforeUnpublish",
+      () => {
+        order.push("before");
+      },
+      { id: "b" },
+    );
+    registerGlobalOryCMSHook(
+      "afterUnpublish",
+      () => {
+        order.push("after");
+      },
+      { id: "a" },
+    );
+
+    let call = 0;
+    const pool = makePool(() => {
+      call++;
+      order.push("db");
+      if (call === 1) return { rows: [{ ...row(), _isDraft: false, _publishedAt: NOW }] };
+      return { rows: [{ ...row(), _isDraft: true }] };
+    });
+    await unpublishOryCMSContentEntry("articles", "1", pool);
 
     expect(order[1]).toBe("before");
     expect(order[2]).toBe("db");

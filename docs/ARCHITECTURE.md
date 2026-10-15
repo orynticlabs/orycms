@@ -290,6 +290,10 @@ Holds `OryCMSPermission[]` — each with `action` (create / read / update / dele
 ### Users (`OryCMSUser`)
 Carries an array of role IDs. Permissions computed at runtime by merging assigned roles. System roles (`isSystem: true`) are non-deletable.
 
+### Default roles and content
+
+Owner and Admin can do anything with content. Editor holds every content action, including publish and delete. Author can create, read and update content, but not publish or delete it — publishing is left to Editor and above, by design. Viewer can only read. This is the default role matrix; a deployment can define its own roles and permissions on top of it.
+
 ---
 
 ## Technology Stack

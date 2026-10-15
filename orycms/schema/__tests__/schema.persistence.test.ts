@@ -105,8 +105,8 @@ describe("collection schema persistence", () => {
     const { pool, client } = makePool({
       clientQuery: (sql) => {
         if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return result();
-        if (sql.includes("SELECT id FROM orycms_collections"))
-          return result([{ id: "collection-id" }]);
+        if (sql.includes('SELECT id, "tableName"'))
+          return result([{ id: "collection-id", tableName: "blog_posts" }]);
         if (sql.includes("UPDATE orycms_collections")) return result();
         if (sql.includes("DELETE FROM orycms_collection_fields")) return result();
         if (sql.includes("INSERT INTO orycms_collection_fields")) return result();
@@ -126,6 +126,44 @@ describe("collection schema persistence", () => {
     ).toBe(true);
     expect(client.query).toHaveBeenCalledWith("COMMIT");
     expect(getOryCMSCollection("blog-posts")?.name).toBe("Articles");
+  });
+
+  it("refuses to change an already-persisted collection's table name on update", async () => {
+    const renamed = { ...POSTS_COLLECTION, tableName: "renamed_table" };
+    const { pool, client } = makePool({
+      clientQuery: (sql) => {
+        if (sql === "BEGIN" || sql === "ROLLBACK") return result();
+        if (sql.includes('SELECT id, "tableName"'))
+          return result([{ id: "collection-id", tableName: "blog_posts" }]);
+        throw new Error(`Unexpected SQL: ${sql}`);
+      },
+    });
+
+    await expect(
+      updateOryCMSPersistedCollection("blog-posts", renamed, pool),
+    ).rejects.toMatchObject({ code: "TABLE_RENAME_NOT_SUPPORTED", statusCode: 409 });
+    expect(client.query).toHaveBeenCalledWith("ROLLBACK");
+    expect(client.query).not.toHaveBeenCalledWith("COMMIT");
+  });
+
+  it("allows an update that keeps the same resolved table name", async () => {
+    const updated = { ...POSTS_COLLECTION, name: "Articles" };
+    const { pool, client } = makePool({
+      clientQuery: (sql) => {
+        if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return result();
+        if (sql.includes('SELECT id, "tableName"'))
+          return result([{ id: "collection-id", tableName: "blog_posts" }]);
+        if (sql.includes("UPDATE orycms_collections")) return result();
+        if (sql.includes("DELETE FROM orycms_collection_fields")) return result();
+        if (sql.includes("INSERT INTO orycms_collection_fields")) return result();
+        throw new Error(`Unexpected SQL: ${sql}`);
+      },
+    });
+
+    await expect(updateOryCMSPersistedCollection("blog-posts", updated, pool)).resolves.toEqual(
+      updated,
+    );
+    expect(client.query).toHaveBeenCalledWith("COMMIT");
   });
 
   it("deletes persisted collection rows and removes the registry entry", async () => {
@@ -165,6 +203,50 @@ describe("collection schema persistence", () => {
     });
 
     await expect(saveOryCMSCollectionSchema(POSTS_COLLECTION, pool)).rejects.toMatchObject({
+      code: "SCHEMA_VALIDATION_ERROR",
+    });
+    expect(client.query).toHaveBeenCalledWith("ROLLBACK");
+  });
+
+  it("prevents a tableName that collides with another collection's table before saving", async () => {
+    const existing = { ...POSTS_COLLECTION, slug: "articles", tableName: "shared_table" };
+    const incoming = { ...POSTS_COLLECTION, slug: "new-posts", tableName: "shared_table" };
+    const { pool, client } = makePool({
+      poolQuery: (sql) => {
+        if (sql.includes("SELECT id, name")) {
+          return result([{ id: "existing-id", collectionSlug: "articles", schemaJson: existing }]);
+        }
+        if (sql.includes("SELECT name")) return result();
+        return result();
+      },
+      clientQuery: (sql) => {
+        if (sql === "BEGIN" || sql === "ROLLBACK") return result();
+        throw new Error(`Unexpected SQL: ${sql}`);
+      },
+    });
+
+    await expect(saveOryCMSCollectionSchema(incoming, pool)).rejects.toMatchObject({
+      code: "SCHEMA_VALIDATION_ERROR",
+    });
+    expect(client.query).toHaveBeenCalledWith("ROLLBACK");
+    expect(getOryCMSCollection("new-posts")).toBeNull();
+  });
+
+  it("prevents a tableName under the reserved orycms_ prefix before saving", async () => {
+    const incoming = { ...POSTS_COLLECTION, slug: "new-posts", tableName: "orycms_evil" };
+    const { pool, client } = makePool({
+      poolQuery: (sql) => {
+        if (sql.includes("SELECT id, name")) return result();
+        if (sql.includes("SELECT name")) return result();
+        return result();
+      },
+      clientQuery: (sql) => {
+        if (sql === "BEGIN" || sql === "ROLLBACK") return result();
+        throw new Error(`Unexpected SQL: ${sql}`);
+      },
+    });
+
+    await expect(saveOryCMSCollectionSchema(incoming, pool)).rejects.toMatchObject({
       code: "SCHEMA_VALIDATION_ERROR",
     });
     expect(client.query).toHaveBeenCalledWith("ROLLBACK");

@@ -4,6 +4,7 @@ import { getOryCMSCollection } from "@/schema";
 import type { OryCMSContentData, OryCMSContentEntry, OryCMSContentStatus } from "@/types";
 import type { OryCMSDatabaseQueryFilter, OryCMSDatabaseSortOptions } from "@/database";
 import { getOryCMSPool } from "@/lib/db";
+import { quoteSqlIdentifier } from "@/lib/sql-identifier";
 import { OryCMSContentError } from "./content.errors";
 import {
   validateOryCMSContentData,
@@ -57,12 +58,42 @@ function deriveTable(col: OryCMSCollectionDefinition): string {
   return col.tableName ?? col.slug.replace(/-/g, "_");
 }
 
+/** Shorthand for quoting a Postgres identifier — this engine only ever targets Postgres. */
+function q(name: string): string {
+  return quoteSqlIdentifier(name, "postgresql");
+}
+
+/**
+ * Maps a write failure to a clean, stable error code with no driver detail. A
+ * unique-constraint violation (23505) becomes a 409; a foreign-key violation
+ * (23503) becomes a 422. Anything else is rethrown as-is, for the caller's own
+ * generic-error handling to redact and log.
+ */
+function mapWriteError(err: unknown): never {
+  const code = (err as { code?: string } | null)?.code;
+  if (code === "23505") {
+    throw new OryCMSContentError(
+      "DUPLICATE_VALUE",
+      "A value in this entry conflicts with an existing one.",
+      409,
+    );
+  }
+  if (code === "23503") {
+    throw new OryCMSContentError(
+      "INVALID_REFERENCE",
+      "This entry references something that does not exist.",
+      422,
+    );
+  }
+  throw err;
+}
+
 /** Map adapter filter operator → SQL fragment. Returns [clause, value]. */
 function filterToSQL(
   f: OryCMSDatabaseQueryFilter,
   idx: number,
 ): { clause: string; value: unknown } {
-  const col = `"${f.field}"`;
+  const col = q(f.field);
   switch (f.operator) {
     case "eq":
       return { clause: `${col} = $${idx}`, value: f.value };
@@ -148,7 +179,7 @@ export async function listOryCMSContentEntries(
 
   // Draft filter
   if (col.draft?.enabled && !includeDrafts) {
-    whereParts.push(`"_isDraft" = $${idx++}`);
+    whereParts.push(`${q("_isDraft")} = $${idx++}`);
     values.push(false);
   }
 
@@ -162,12 +193,12 @@ export async function listOryCMSContentEntries(
 
   const orderBy =
     sort.length > 0
-      ? `ORDER BY ${sort.map((s) => `"${s.field}" ${s.direction.toUpperCase()}`).join(", ")}`
-      : `ORDER BY "createdAt" DESC`;
+      ? `ORDER BY ${sort.map((s) => `${q(s.field)} ${s.direction.toUpperCase()}`).join(", ")}`
+      : `ORDER BY ${q("createdAt")} DESC`;
 
   // COUNT
   const countRes = await pool.query<{ count: string }>(
-    `SELECT COUNT(*) AS count FROM "${table}" ${where}`,
+    `SELECT COUNT(*) AS count FROM ${q(table)} ${where}`,
     values,
   );
   const total = parseInt(countRes.rows[0].count, 10);
@@ -176,7 +207,7 @@ export async function listOryCMSContentEntries(
   const offset = (page - 1) * limit;
   values.push(limit, offset);
   const dataRes = await pool.query(
-    `SELECT * FROM "${table}" ${where} ${orderBy} LIMIT $${idx} OFFSET $${idx + 1}`,
+    `SELECT * FROM ${q(table)} ${where} ${orderBy} LIMIT $${idx} OFFSET $${idx + 1}`,
     values,
   );
 
@@ -194,7 +225,7 @@ export async function getOryCMSContentEntry(
   const col = resolveCollection(collectionSlug);
   const table = deriveTable(col);
 
-  const res = await pool.query(`SELECT * FROM "${table}" WHERE "id" = $1 LIMIT 1`, [id]);
+  const res = await pool.query(`SELECT * FROM ${q(table)} WHERE ${q("id")} = $1 LIMIT 1`, [id]);
   if (!res.rows[0]) {
     throw new OryCMSContentError("ENTRY_NOT_FOUND", `Entry "${id}" not found.`, 404);
   }
@@ -218,21 +249,26 @@ export async function createOryCMSContentEntry(
   const isDraft = input.asDraft !== false || hasDraft;
 
   const fieldData = { ...beforeCtx.data };
-  const cols: string[] = Object.keys(fieldData).map((k) => `"${k}"`);
+  const cols: string[] = Object.keys(fieldData).map((k) => q(k));
   const placeholders: string[] = Object.keys(fieldData).map((_, i) => `$${i + 1}`);
   const vals: unknown[] = Object.values(fieldData);
   let i = vals.length + 1;
 
   if (hasDraft) {
-    cols.push(`"_isDraft"`);
+    cols.push(q("_isDraft"));
     placeholders.push(`$${i++}`);
     vals.push(isDraft);
   }
 
-  const res = await pool.query(
-    `INSERT INTO "${table}" (${cols.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING *`,
-    vals,
-  );
+  let res;
+  try {
+    res = await pool.query(
+      `INSERT INTO ${q(table)} (${cols.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING *`,
+      vals,
+    );
+  } catch (err) {
+    mapWriteError(err);
+  }
   const entry = rowToEntry(col, res.rows[0] as Record<string, unknown>);
 
   try {
@@ -277,14 +313,19 @@ export async function updateOryCMSContentEntry(
     throw new OryCMSContentError("FIELD_REQUIRED", "At least one field must be provided.", 422);
   }
 
-  const sets = keys.map((k, i) => `"${k}" = $${i + 1}`).join(", ");
+  const sets = keys.map((k, i) => `${q(k)} = $${i + 1}`).join(", ");
   const vals = [...Object.values(beforeCtx.data), id];
   const idIdx = vals.length;
 
-  const res = await pool.query(
-    `UPDATE "${table}" SET ${sets}, "updatedAt" = NOW() WHERE "id" = $${idIdx} RETURNING *`,
-    vals,
-  );
+  let res;
+  try {
+    res = await pool.query(
+      `UPDATE ${q(table)} SET ${sets}, ${q("updatedAt")} = NOW() WHERE ${q("id")} = $${idIdx} RETURNING *`,
+      vals,
+    );
+  } catch (err) {
+    mapWriteError(err);
+  }
   const entry = rowToEntry(col, res.rows[0] as Record<string, unknown>);
 
   try {
@@ -322,7 +363,7 @@ export async function deleteOryCMSContentEntry(
   );
 
   const table = deriveTable(col);
-  await pool.query(`DELETE FROM "${table}" WHERE "id" = $1`, [id]);
+  await pool.query(`DELETE FROM ${q(table)} WHERE ${q("id")} = $1`, [id]);
 
   try {
     await runOryCMSAfterHooks(
@@ -370,10 +411,23 @@ export async function publishOryCMSContentEntry(
   );
 
   const table = deriveTable(col);
+  // The WHERE clause repeats the draft check so the transition itself is atomic —
+  // two concurrent publish calls can't both see "not yet published" and both write;
+  // only one UPDATE can match a row still in draft state.
   const res = await pool.query(
-    `UPDATE "${table}" SET "_isDraft" = false, "_publishedAt" = NOW(), "updatedAt" = NOW() WHERE "id" = $1 RETURNING *`,
+    `UPDATE ${q(table)} SET ${q("_isDraft")} = false, ${q("_publishedAt")} = NOW(), ${q("updatedAt")} = NOW() WHERE ${q("id")} = $1 AND ${q("_isDraft")} = true RETURNING *`,
     [id],
   );
+  if (!res.rows[0]) {
+    // Lost the race, or the entry was deleted between the read above and this write.
+    const recheck = await pool.query(`SELECT ${q("id")} FROM ${q(table)} WHERE ${q("id")} = $1`, [
+      id,
+    ]);
+    if (!recheck.rows[0]) {
+      throw new OryCMSContentError("ENTRY_NOT_FOUND", `Entry "${id}" not found.`, 404);
+    }
+    throw new OryCMSContentError("ALREADY_PUBLISHED", `Entry "${id}" is already published.`, 409);
+  }
   const published = rowToEntry(col, res.rows[0] as Record<string, unknown>);
 
   try {
@@ -423,10 +477,21 @@ export async function unpublishOryCMSContentEntry(
   );
 
   const table = deriveTable(col);
+  // Same atomic guard as publish: the WHERE clause repeats the published check so a
+  // concurrent unpublish can't race past it.
   const res = await pool.query(
-    `UPDATE "${table}" SET "_isDraft" = true, "updatedAt" = NOW() WHERE "id" = $1 RETURNING *`,
+    `UPDATE ${q(table)} SET ${q("_isDraft")} = true, ${q("updatedAt")} = NOW() WHERE ${q("id")} = $1 AND ${q("_isDraft")} = false RETURNING *`,
     [id],
   );
+  if (!res.rows[0]) {
+    const recheck = await pool.query(`SELECT ${q("id")} FROM ${q(table)} WHERE ${q("id")} = $1`, [
+      id,
+    ]);
+    if (!recheck.rows[0]) {
+      throw new OryCMSContentError("ENTRY_NOT_FOUND", `Entry "${id}" not found.`, 404);
+    }
+    throw new OryCMSContentError("NOT_PUBLISHED", `Entry "${id}" is not published.`, 409);
+  }
   const unpublished = rowToEntry(col, res.rows[0] as Record<string, unknown>);
 
   try {

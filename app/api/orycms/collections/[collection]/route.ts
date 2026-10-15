@@ -13,22 +13,38 @@ import { requireOryCMSPermission } from "@/rbac";
 
 // GET /api/orycms/collections/:collection — get a single collection schema
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ collection: string }> },
 ) {
-  await loadOryCMSPersistedCollectionsOnStartup();
-  const { collection } = await params;
-  const schema = getOryCMSCollection(collection);
-  if (!schema) {
+  try {
+    await loadOryCMSPersistedCollectionsOnStartup();
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "collections", "read");
+
+    const { collection } = await params;
+    const schema = getOryCMSCollection(collection);
+    if (!schema) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "NOT_FOUND", message: `Collection "${collection}" not found.` },
+        },
+        { status: 404 },
+      );
+    }
+    return NextResponse.json({ success: true, data: schema });
+  } catch (err) {
+    if (err instanceof OryCMSAuthError) {
+      return NextResponse.json(
+        { success: false, error: { code: err.code, message: err.message } },
+        { status: err.statusCode },
+      );
+    }
     return NextResponse.json(
-      {
-        success: false,
-        error: { code: "NOT_FOUND", message: `Collection "${collection}" not found.` },
-      },
-      { status: 404 },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Could not get schema." } },
+      { status: 500 },
     );
   }
-  return NextResponse.json({ success: true, data: schema });
 }
 
 // PATCH /api/orycms/collections/:collection — update persisted registry schema

@@ -20,6 +20,49 @@ const RESERVED_SLUGS = new Set([
   "published-at",
 ]);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Table and column name safety
+//
+// A collection's table name (the slug, underscored, or an explicit override)
+// and every field's name end up spliced into generated SQL as an identifier
+// (see the mapper, schema diff and migration planner). Checked here, before
+// any of that happens, so an unsafe name is refused at the point it is saved
+// rather than relying on quoting alone to make it harmless later.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A safe, unquoted-style SQL identifier: starts with a letter or underscore, then
+ * letters, digits or underscores, at most 63 characters (Postgres' own identifier
+ * length limit). */
+const IDENTIFIER_REGEX = /^[A-Za-z_][A-Za-z0-9_]{0,62}$/;
+
+/** Every table this library creates for itself starts with this prefix; a collection
+ * submitted through the API may never resolve to a table name that could collide
+ * with one. Collections this library registers for itself at startup are exempt —
+ * see the `allowCoreTablePrefix` validator option. */
+const CORE_TABLE_PREFIX = "orycms_";
+
+/** Columns every collection table may already have, depending on its settings —
+ * a field may never reuse one of these names. */
+const SYSTEM_COLUMN_NAMES = new Set([
+  "id",
+  "createdAt",
+  "updatedAt",
+  "_isDraft",
+  "_publishedAt",
+  "_seoTitle",
+  "_seoDescription",
+  "_seoImage",
+]);
+
+/** The table name a collection definition resolves to — mirrors the formula used
+ * by the mapper, content engine and persistence layer (`tableName ?? slug`,
+ * dashes to underscores). */
+function resolveTableName(def: { tableName?: unknown; slug?: unknown }): string | undefined {
+  if (isNonEmptyString(def.tableName)) return def.tableName;
+  if (isNonEmptyString(def.slug)) return def.slug.replace(/-/g, "_");
+  return undefined;
+}
+
 const VALID_FIELD_TYPES = new Set<OryCMSSchemaFieldType>([
   "text",
   "textarea",
@@ -64,6 +107,17 @@ export interface OryCMSValidatorOptions {
    * If provided, relation targets are checked against the registered collection slugs.
    */
   registeredCollectionSlugs?: ReadonlySet<string>;
+  /**
+   * Table names already in use by other collections (lowercased), so two collections
+   * can never resolve to the same physical table.
+   */
+  registeredTableNames?: ReadonlySet<string>;
+  /**
+   * Allows a table name under this library's own reserved prefix. Set only for the
+   * collections this library registers for itself at startup — never for anything
+   * reaching the validator from the collections API.
+   */
+  allowCoreTablePrefix?: boolean;
 }
 
 /**
@@ -126,6 +180,53 @@ export function validateOryCMSCollectionSchema(
       path: "slug",
       message: `A collection with slug "${def.slug}" is already registered`,
     });
+  }
+
+  // ── tableName (explicit override, or derived from slug) ─────────────────────
+  //
+  // Whatever table name the collection resolves to, it ends up unquoted-identifier
+  // safe, never under the reserved `orycms_` prefix, never a bare SQL reserved word,
+  // and never shared with another collection — whether that name was typed in
+  // directly or derived automatically from an already-valid slug.
+
+  if (def.tableName !== undefined) {
+    if (!isNonEmptyString(def.tableName)) {
+      push(issues, {
+        code: "INVALID_TABLE_NAME_FORMAT",
+        path: "tableName",
+        message: "tableName must be a non-empty string when provided",
+      });
+    } else if (!IDENTIFIER_REGEX.test(def.tableName)) {
+      push(issues, {
+        code: "INVALID_TABLE_NAME_FORMAT",
+        path: "tableName",
+        message:
+          "tableName must start with a letter or underscore, contain only letters, digits " +
+          "and underscores, and be at most 63 characters",
+      });
+    }
+  }
+
+  const resolvedTableName = resolveTableName(def);
+  const tableNamePath = isNonEmptyString(def.tableName) ? "tableName" : "slug";
+
+  if (resolvedTableName && IDENTIFIER_REGEX.test(resolvedTableName)) {
+    if (
+      !options.allowCoreTablePrefix &&
+      resolvedTableName.toLowerCase().startsWith(CORE_TABLE_PREFIX)
+    ) {
+      push(issues, {
+        code: "RESERVED_TABLE_NAME",
+        path: tableNamePath,
+        message: `"${resolvedTableName}" starts with the reserved "${CORE_TABLE_PREFIX}" prefix used by this library's own tables`,
+      });
+    } else if (options.registeredTableNames?.has(resolvedTableName.toLowerCase())) {
+      push(issues, {
+        code: "DUPLICATE_TABLE_NAME",
+        path: tableNamePath,
+        message: `Table name "${resolvedTableName}" is already used by another collection`,
+      });
+    }
   }
 
   // ── labels ─────────────────────────────────────────────────────────────────
@@ -208,6 +309,24 @@ export function validateOryCMSCollectionSchema(
         fieldName,
         message: `Duplicate field name "${fieldName}" in collection`,
       });
+    } else if (!IDENTIFIER_REGEX.test(fieldName)) {
+      push(issues, {
+        code: "INVALID_FIELD_NAME_FORMAT",
+        path: `${p}.name`,
+        fieldName,
+        message:
+          `Field name "${fieldName}" must start with a letter or underscore, contain only ` +
+          "letters, digits and underscores, and be at most 63 characters",
+      });
+      seenFieldNames.add(fieldName);
+    } else if (SYSTEM_COLUMN_NAMES.has(fieldName)) {
+      push(issues, {
+        code: "SYSTEM_FIELD_NAME",
+        path: `${p}.name`,
+        fieldName,
+        message: `Field name "${fieldName}" is reserved for a system column`,
+      });
+      seenFieldNames.add(fieldName);
     } else {
       seenFieldNames.add(fieldName);
     }

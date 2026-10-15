@@ -19,7 +19,6 @@ const ALLOWED_TYPES = new Set([
   "image/png",
   "image/webp",
   "image/gif",
-  "image/svg+xml",
   "video/mp4",
   "video/webm",
   "video/ogg",
@@ -35,7 +34,6 @@ const EXT_MAP: Record<string, string> = {
   "image/png": ".png",
   "image/webp": ".webp",
   "image/gif": ".gif",
-  "image/svg+xml": ".svg",
   "video/mp4": ".mp4",
   "video/webm": ".webm",
   "video/ogg": ".ogv",
@@ -80,17 +78,6 @@ function isUtf8Text(buf: Buffer): boolean {
   }
 }
 
-/**
- * An SVG is accepted only as a plain drawing: it must contain an svg root and no script,
- * foreign-object, inline event handler or javascript: URL.
- */
-function isPlainSvg(buf: Buffer): boolean {
-  if (!isUtf8Text(buf)) return false;
-  const text = buf.toString("utf8").replace(/^\uFEFF/, "");
-  if (!/<svg[\s>]/i.test(text.slice(0, 4096))) return false;
-  return !/<script|<foreignobject|\son[a-z]+\s*=|javascript:/i.test(text);
-}
-
 /** Checks the file's leading bytes against the type the client claimed. */
 export function matchesClaimedType(buf: Buffer, mime: string): boolean {
   switch (mime) {
@@ -102,8 +89,6 @@ export function matchesClaimedType(buf: Buffer, mime: string): boolean {
       return ASCII(buf, "GIF87a") || ASCII(buf, "GIF89a");
     case "image/webp":
       return ASCII(buf, "RIFF") && ASCII(buf, "WEBP", 8);
-    case "image/svg+xml":
-      return isPlainSvg(buf);
     case "video/mp4":
       return ASCII(buf, "ftyp", 4);
     case "video/webm":
