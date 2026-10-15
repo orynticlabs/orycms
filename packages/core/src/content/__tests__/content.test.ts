@@ -100,6 +100,34 @@ describe("validateOryCMSContentData", () => {
     ).toThrow(expect.objectContaining({ code: "FIELD_UNKNOWN", field: "ghost" }));
   });
 
+  it.each(["id", "createdAt", "updatedAt", "_isDraft", "_publishedAt"])(
+    "throws FIELD_FORBIDDEN for a client-supplied %j on create",
+    (key) => {
+      expect(() =>
+        validateOryCMSContentData(
+          POSTS_COLLECTION,
+          { title: "Hi", status: "draft", [key]: "x" },
+          true,
+        ),
+      ).toThrow(expect.objectContaining({ code: "FIELD_FORBIDDEN", field: key }));
+    },
+  );
+
+  it.each(["id", "createdAt", "updatedAt", "_isDraft", "_publishedAt"])(
+    "throws FIELD_FORBIDDEN for a client-supplied %j on update",
+    (key) => {
+      expect(() => validateOryCMSContentData(POSTS_COLLECTION, { [key]: "x" }, false)).toThrow(
+        expect.objectContaining({ code: "FIELD_FORBIDDEN", field: key }),
+      );
+    },
+  );
+
+  it("still allows SEO metadata fields to be set, unlike the forbidden identity/workflow columns", () => {
+    expect(() =>
+      validateOryCMSContentData(POSTS_COLLECTION, { _seoTitle: "A nice title" }, false),
+    ).not.toThrow();
+  });
+
   it("throws FIELD_REQUIRED on create when required field missing", () => {
     expect(() => validateOryCMSContentData(POSTS_COLLECTION, { body: "text" }, true)).toThrow(
       expect.objectContaining({ code: "FIELD_REQUIRED", field: "title" }),
@@ -398,6 +426,41 @@ describe("createOryCMSContentEntry", () => {
     await createOryCMSContentEntry("articles", { data: { title: "Hi" }, asDraft: true }, pool);
     expect(capturedSql).toContain("_isDraft");
   });
+
+  it("maps a unique-constraint violation to a clean 409, with no driver text", async () => {
+    const pool = makePool(() => {
+      throw Object.assign(
+        new Error('duplicate key value violates unique constraint "blog_posts_title_key"'),
+        { code: "23505" },
+      );
+    });
+    try {
+      await createOryCMSContentEntry(
+        "blog-posts",
+        { data: { title: "Hi", status: "draft" } },
+        pool,
+      );
+      throw new Error("expected createOryCMSContentEntry to reject");
+    } catch (err) {
+      expect(err).toMatchObject({ code: "DUPLICATE_VALUE", statusCode: 409 });
+      expect((err as Error).message).not.toContain("constraint");
+      expect((err as Error).message).not.toContain("blog_posts_title_key");
+    }
+  });
+
+  it("maps a foreign-key violation to a clean 422, with no driver text", async () => {
+    const pool = makePool(() => {
+      throw Object.assign(
+        new Error('insert or update on table "blog_posts" violates foreign key constraint'),
+        {
+          code: "23503",
+        },
+      );
+    });
+    await expect(
+      createOryCMSContentEntry("blog-posts", { data: { title: "Hi", status: "draft" } }, pool),
+    ).rejects.toMatchObject({ code: "INVALID_REFERENCE", statusCode: 422 });
+  });
 });
 
 // ── updateOryCMSContentEntry ──────────────────────────────────────────────────
@@ -499,6 +562,62 @@ describe("publishOryCMSContentEntry", () => {
       },
     );
   });
+
+  it("sets _publishedAt with the database's own NOW(), never a client-supplied value", async () => {
+    let updateSql = "";
+    let callIdx = 0;
+    const pool = makePool((sql: string) => {
+      callIdx++;
+      if (callIdx === 1) return { rows: [{ ...row(), _isDraft: true }] };
+      updateSql = sql;
+      return { rows: [{ ...row(), _isDraft: false, _publishedAt: NOW }] };
+    });
+    await publishOryCMSContentEntry("articles", "entry-uuid", pool);
+    expect(updateSql).toContain('"_publishedAt" = NOW()');
+  });
+
+  it("guards the publish write with a condition on the row's current state, so a losing concurrent call cannot also publish it", async () => {
+    let updateSql = "";
+    let callIdx = 0;
+    const pool = makePool((sql: string) => {
+      callIdx++;
+      if (callIdx === 1) return { rows: [{ ...row(), _isDraft: true }] };
+      updateSql = sql;
+      return { rows: [{ ...row(), _isDraft: false, _publishedAt: NOW }] };
+    });
+    await publishOryCMSContentEntry("articles", "entry-uuid", pool);
+    expect(updateSql).toMatch(/WHERE\s+"id"\s*=\s*\$1\s+AND\s+"_isDraft"\s*=\s*true/);
+  });
+
+  it("reports a clean ALREADY_PUBLISHED, not a crash, when a concurrent call wins the race", async () => {
+    // The first read sees a draft, but by the time the guarded UPDATE runs, another
+    // request has already published it — the UPDATE matches 0 rows.
+    let callIdx = 0;
+    const pool = makePool((sql: string) => {
+      callIdx++;
+      if (callIdx === 1) return { rows: [{ ...row(), _isDraft: true }] };
+      if (sql.startsWith("UPDATE")) return { rows: [] };
+      return { rows: [{ ...row(), _isDraft: false }] }; // the recheck SELECT
+    });
+    await expect(publishOryCMSContentEntry("articles", "entry-uuid", pool)).rejects.toMatchObject({
+      code: "ALREADY_PUBLISHED",
+      statusCode: 409,
+    });
+  });
+
+  it("reports a clean ENTRY_NOT_FOUND, not a crash, when the entry is deleted mid-request", async () => {
+    let callIdx = 0;
+    const pool = makePool((sql: string) => {
+      callIdx++;
+      if (callIdx === 1) return { rows: [{ ...row(), _isDraft: true }] };
+      if (sql.startsWith("UPDATE")) return { rows: [] };
+      return { rows: [] }; // the recheck SELECT finds nothing either
+    });
+    await expect(publishOryCMSContentEntry("articles", "entry-uuid", pool)).rejects.toMatchObject({
+      code: "ENTRY_NOT_FOUND",
+      statusCode: 404,
+    });
+  });
 });
 
 // ── unpublishOryCMSContentEntry ───────────────────────────────────────────────
@@ -532,6 +651,45 @@ describe("unpublishOryCMSContentEntry", () => {
     ).rejects.toMatchObject({
       code: "WRITE_FORBIDDEN",
     });
+  });
+
+  it("guards the unpublish write with a condition on the row's current state", async () => {
+    let updateSql = "";
+    let callIdx = 0;
+    const pool = makePool((sql: string) => {
+      callIdx++;
+      if (callIdx === 1) return { rows: [{ ...row(), _isDraft: false }] };
+      updateSql = sql;
+      return { rows: [{ ...row(), _isDraft: true }] };
+    });
+    await unpublishOryCMSContentEntry("articles", "entry-uuid", pool);
+    expect(updateSql).toMatch(/WHERE\s+"id"\s*=\s*\$1\s+AND\s+"_isDraft"\s*=\s*false/);
+  });
+
+  it("reports a clean NOT_PUBLISHED, not a crash, when a concurrent call wins the race", async () => {
+    let callIdx = 0;
+    const pool = makePool((sql: string) => {
+      callIdx++;
+      if (callIdx === 1) return { rows: [{ ...row(), _isDraft: false }] };
+      if (sql.startsWith("UPDATE")) return { rows: [] };
+      return { rows: [{ ...row(), _isDraft: true }] }; // the recheck SELECT
+    });
+    await expect(unpublishOryCMSContentEntry("articles", "entry-uuid", pool)).rejects.toMatchObject(
+      { code: "NOT_PUBLISHED", statusCode: 409 },
+    );
+  });
+
+  it("reports a clean ENTRY_NOT_FOUND, not a crash, when the entry is deleted mid-request", async () => {
+    let callIdx = 0;
+    const pool = makePool((sql: string) => {
+      callIdx++;
+      if (callIdx === 1) return { rows: [{ ...row(), _isDraft: false }] };
+      if (sql.startsWith("UPDATE")) return { rows: [] };
+      return { rows: [] };
+    });
+    await expect(unpublishOryCMSContentEntry("articles", "entry-uuid", pool)).rejects.toMatchObject(
+      { code: "ENTRY_NOT_FOUND", statusCode: 404 },
+    );
   });
 });
 

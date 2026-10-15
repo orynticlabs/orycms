@@ -7,14 +7,37 @@ import {
   OryCMSContentError,
 } from "@/content";
 import { protectOryCMSAdminRoute, OryCMSAuthError } from "@/auth";
+import { requireOryCMSPermission } from "@/rbac";
 
 type RouteCtx = { params: Promise<{ collection: string; id: string }> };
 
-// GET /api/orycms/collections/:collection/content/:id
+/** True only for a session that holds content:read — the gate for ever returning a draft. */
+async function canSeeDrafts(request: NextRequest): Promise<boolean> {
+  try {
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "read");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// GET /api/orycms/collections/:collection/content/:id — reachable without a session
+// (see the sibling content/route.ts comment); a draft is never returned to a caller
+// who can't see drafts.
 export async function GET(request: NextRequest, { params }: RouteCtx) {
   try {
     const { collection, id } = await params;
     const entry = await getOryCMSContentEntry(collection, id);
+    if (entry.status === "draft" && !(await canSeeDrafts(request))) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "ENTRY_NOT_FOUND", message: `Entry "${id}" not found.` },
+        },
+        { status: 404 },
+      );
+    }
     return NextResponse.json({ success: true, data: entry });
   } catch (err) {
     if (err instanceof OryCMSContentError)
@@ -32,7 +55,8 @@ export async function GET(request: NextRequest, { params }: RouteCtx) {
 // PATCH /api/orycms/collections/:collection/content/:id
 export async function PATCH(request: NextRequest, { params }: RouteCtx) {
   try {
-    await protectOryCMSAdminRoute(request);
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "update");
     const { collection, id } = await params;
     const body = (await request.json()) as { data?: Record<string, unknown> };
 
@@ -69,7 +93,8 @@ export async function PATCH(request: NextRequest, { params }: RouteCtx) {
 // DELETE /api/orycms/collections/:collection/content/:id
 export async function DELETE(request: NextRequest, { params }: RouteCtx) {
   try {
-    await protectOryCMSAdminRoute(request);
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "delete");
     const { collection, id } = await params;
     await deleteOryCMSContentEntry(collection, id);
     return NextResponse.json({ success: true, data: null });

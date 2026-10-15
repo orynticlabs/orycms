@@ -3,6 +3,7 @@ import type { OryCMSCollectionDefinition } from "@/schema";
 import { getOryCMSPool } from "@/lib/db";
 import { mapOryCMSCollectionToDatabaseSchema } from "./collection.mapper";
 import { generateOryCMSCollectionMigrationPlan } from "./migration.planner";
+import { quoteSqlIdentifier } from "@/lib/sql-identifier";
 import type {
   OryCMSMappedDatabaseField,
   OryCMSMappedDatabaseIndex,
@@ -90,7 +91,7 @@ export interface OryCMSMigrationPreview {
 }
 
 function q(name: string): string {
-  return `"${name.replace(/"/g, '""')}"`;
+  return quoteSqlIdentifier(name, "postgresql");
 }
 
 function normaliseType(type: string): string {

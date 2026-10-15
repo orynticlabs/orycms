@@ -2,12 +2,15 @@ export type OryCMSContentErrorCode =
   | "COLLECTION_NOT_FOUND"
   | "ENTRY_NOT_FOUND"
   | "FIELD_UNKNOWN"
+  | "FIELD_FORBIDDEN"
   | "FIELD_REQUIRED"
   | "FIELD_INVALID"
   | "OPERATOR_INVALID"
   | "WRITE_FORBIDDEN"
   | "ALREADY_PUBLISHED"
-  | "NOT_PUBLISHED";
+  | "NOT_PUBLISHED"
+  | "DUPLICATE_VALUE"
+  | "INVALID_REFERENCE";
 
 export class OryCMSContentError extends Error {
   readonly code: OryCMSContentErrorCode;

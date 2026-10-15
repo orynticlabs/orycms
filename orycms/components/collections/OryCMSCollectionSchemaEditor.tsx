@@ -93,12 +93,14 @@ function FieldInput({
   onChange,
   placeholder,
   disabled,
+  hint,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  hint?: string;
 }) {
   return (
     <div className="space-y-1.5">
@@ -110,6 +112,7 @@ function FieldInput({
         disabled={disabled}
         className="h-8 text-[13px]"
       />
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -346,6 +349,8 @@ export function OryCMSCollectionSchemaEditor({
               value={form.tableName}
               onChange={(tableName) => updateForm({ tableName })}
               placeholder="blog_posts"
+              disabled={mode === "edit"}
+              hint={mode === "edit" ? "Cannot be changed once a collection exists." : undefined}
             />
           </div>
 

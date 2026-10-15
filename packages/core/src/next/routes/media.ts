@@ -104,6 +104,32 @@ function optionalString(value: unknown, name: string, max: number): string | und
   return value;
 }
 
+/**
+ * Reads a request body up to `maxBytes`, counting bytes as they arrive rather than
+ * trusting the declared Content-Length. As soon as the running total passes the
+ * limit, the underlying stream is cancelled and a 413 is thrown without reading or
+ * buffering the rest of the body. The multipart data is parsed from whatever was
+ * read, once this returns.
+ */
+async function readBoundedBody(request: Request, maxBytes: number): Promise<Buffer> {
+  const reader = request.body?.getReader();
+  if (!reader) return Buffer.alloc(0);
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw statusError("MEDIA_TOO_LARGE", "File exceeds the 50 MB limit.", 413);
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
+}
+
 // ── Media ───────────────────────────────────────────────────────────────────────
 
 const listMedia: OryCMSRoute = {
@@ -139,15 +165,19 @@ const uploadMedia: OryCMSRoute = {
     const session = await protectOryCMSAdminRoute(request);
     await requireOryCMSPermission(session, "media", "create");
 
-    // Refuse an oversized declared body before any of it is read.
+    // Refuse an oversized declared body before any of it is read. This is a fast
+    // path only — the declared length is never trusted on its own, see readBoundedBody.
     const declared = Number(request.headers.get("content-length") ?? "0");
     if (declared > MAX_FILE_BYTES + MULTIPART_OVERHEAD_BYTES) {
       throw statusError("MEDIA_TOO_LARGE", "File exceeds the 50 MB limit.", 413);
     }
 
+    const body = await readBoundedBody(request, MAX_FILE_BYTES + MULTIPART_OVERHEAD_BYTES);
+
     let formData: FormData;
     try {
-      formData = await request.formData();
+      const contentType = request.headers.get("content-type") ?? "";
+      formData = await new Response(body, { headers: { "content-type": contentType } }).formData();
     } catch {
       throw invalid("Request must be multipart form data.");
     }
@@ -171,7 +201,7 @@ const uploadMedia: OryCMSRoute = {
     const buffer = Buffer.from(await file.arrayBuffer());
     const asset = await uploadOryCMSMedia(
       { buffer, name: sanitizeDisplayName(file.name), mimeType: file.type, size: file.size },
-      session.email,
+      session.userId,
       folderId,
     );
     return jsonOk(asset, 201);

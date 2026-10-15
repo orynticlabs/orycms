@@ -11,13 +11,14 @@ import type {
 import { ORYCMS_DEFAULT_ADAPTER_CAPABILITIES } from "./mapper.types";
 import { mapOryCMSCollectionToDatabaseSchema } from "./collection.mapper";
 import { validateOryCMSAdapterCapabilities } from "./capabilities.validator";
+import { quoteSqlIdentifier } from "@/lib/sql-identifier";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SQL statement generators
 // ─────────────────────────────────────────────────────────────────────────────
 
 function q(name: string, adapter: OryCMSDatabaseAdapterType): string {
-  return adapter === "mysql" ? `\`${name}\`` : `"${name}"`;
+  return quoteSqlIdentifier(name, adapter);
 }
 
 function renderColumnSQL(

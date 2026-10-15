@@ -69,10 +69,16 @@ function assertValidForPersistence(
   );
   const relationTargets = new Set(existingCollections.map((collection) => collection.slug));
   relationTargets.add(definition.slug);
+  const registeredTableNames = new Set(
+    existingCollections
+      .filter((collection) => collection.slug !== originalSlug)
+      .map((collection) => tableNameFor(collection).toLowerCase()),
+  );
 
   const result = validateOryCMSCollectionSchema(definition, {
     registeredSlugs,
     registeredCollectionSlugs: relationTargets,
+    registeredTableNames,
   });
 
   if (!result.valid) {
@@ -239,8 +245,8 @@ export async function updateOryCMSPersistedCollection(
     const existingCollections = await getExistingPersistedCollections(pool);
     assertValidForPersistence(nextDefinition, existingCollections, slug);
 
-    const existing = await client.query<{ id: string }>(
-      `SELECT id FROM orycms_collections WHERE "collectionSlug" = $1 LIMIT 1`,
+    const existing = await client.query<{ id: string; tableName: string | null }>(
+      `SELECT id, "tableName" FROM orycms_collections WHERE "collectionSlug" = $1 LIMIT 1`,
       [slug],
     );
     const collectionId = existing.rows[0]?.id;
@@ -249,6 +255,19 @@ export async function updateOryCMSPersistedCollection(
         "COLLECTION_NOT_FOUND",
         `Collection "${slug}" not found.`,
         404,
+      );
+    }
+
+    // Renaming the table a collection points at is refused: nothing in this update
+    // path touches the physical table, so allowing the metadata to point somewhere
+    // else would silently disconnect the collection from the data it already has.
+    const currentTableName = existing.rows[0].tableName ?? slug.replace(/-/g, "_");
+    const nextTableName = tableNameFor(nextDefinition);
+    if (nextTableName !== currentTableName) {
+      throw new OryCMSCollectionPersistenceError(
+        "TABLE_RENAME_NOT_SUPPORTED",
+        `Collection "${slug}" cannot change its table from "${currentTableName}" to "${nextTableName}".`,
+        409,
       );
     }
 

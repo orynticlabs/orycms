@@ -46,7 +46,7 @@ function _throw(message: string, issues: OryCMSSchemaValidationIssue[]): never {
 export function defineOryCMSCollection(
   definition: OryCMSCollectionDefinition,
 ): OryCMSCollectionDefinition {
-  const result = validateOryCMSCollectionSchema(definition);
+  const result = validateOryCMSCollectionSchema(definition, { allowCoreTablePrefix: true });
   if (!result.valid) {
     _throw(`defineOryCMSCollection: "${definition?.slug ?? "??"}" is invalid`, result.issues);
   }

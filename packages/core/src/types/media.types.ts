@@ -37,6 +37,7 @@ export interface OryCMSMediaAsset {
   dimensions?: OryCMSMediaDimensions;
   formats?: OryCMSMediaFormats;
   folderId?: OryCMSID;
+  /** The uploader's user id. Never an email address or display name. */
   uploadedBy?: string;
   timestamps: OryCMSTimestamps;
 }

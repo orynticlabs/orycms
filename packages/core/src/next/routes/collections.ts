@@ -27,8 +27,10 @@ import {
   rollbackOryCMSMigration,
 } from "@/migrations";
 import { requireOryCMSPermission } from "@/rbac";
+import { recordOryCMSAuditLog } from "@/audit";
 import type { OryCMSRoute } from "../dispatcher";
 import { jsonOk, jsonRaw, jsonError, readJsonBody } from "../http";
+import { safeRouteError } from "../route-errors";
 
 // ── Collections registry ────────────────────────────────────────────────────────
 
@@ -65,8 +67,10 @@ const createCollection: OryCMSRoute = {
 const getCollection: OryCMSRoute = {
   method: "GET",
   pattern: "collections/:collection",
-  handler: async ({ params }) => {
+  handler: async ({ request, params }) => {
     await loadOryCMSPersistedCollectionsOnStartup();
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "collections", "read");
     const schema = getOryCMSCollection(params.collection);
     if (!schema) {
       return jsonError("NOT_FOUND", `Collection "${params.collection}" not found.`, 404);
@@ -101,14 +105,45 @@ const deleteCollection: OryCMSRoute = {
 };
 
 // ── Content ─────────────────────────────────────────────────────────────────────
+//
+// List and get are intentionally reachable without a session (the root app's own
+// middleware allow-lists GET on these same paths, for public-site reads of
+// published content). The one thing an unauthenticated or unprivileged caller must
+// never get back is a draft: canSeeDrafts() is the single place that decides it.
+
+/** True only for a session that holds content:read — the gate for ever returning a draft. */
+async function canSeeDrafts(request: Request): Promise<boolean> {
+  try {
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "read");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Wraps a handler so a thrown error becomes the shared safe response. */
+function guardedContent(
+  context: string,
+  fn: (ctx: Parameters<OryCMSRoute["handler"]>[0]) => Promise<Response>,
+): OryCMSRoute["handler"] {
+  return async (ctx) => {
+    try {
+      return await fn(ctx);
+    } catch (err) {
+      return safeRouteError(context, err);
+    }
+  };
+}
 
 const listContent: OryCMSRoute = {
   method: "GET",
   pattern: "collections/:collection/content",
-  handler: async ({ url, params }) => {
+  handler: guardedContent("content.list", async ({ request, url, params }) => {
     const page = Number(url.searchParams.get("page") ?? 1);
     const limit = Math.min(Number(url.searchParams.get("limit") ?? 50), 200);
-    const includeDrafts = url.searchParams.get("drafts") === "true";
+    const requestedDrafts = url.searchParams.get("drafts") === "true";
+    const includeDrafts = requestedDrafts && (await canSeeDrafts(request));
 
     const filters: OryCMSDatabaseQueryFilter[] = [];
     for (const [key, val] of url.searchParams.entries()) {
@@ -138,14 +173,15 @@ const listContent: OryCMSRoute = {
       includeDrafts,
     });
     return jsonRaw({ success: true, ...result });
-  },
+  }),
 };
 
 const createContent: OryCMSRoute = {
   method: "POST",
   pattern: "collections/:collection/content",
-  handler: async ({ request, params }) => {
-    await protectOryCMSAdminRoute(request);
+  handler: guardedContent("content.create", async ({ request, params }) => {
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "create");
     const body = (await request.json()) as { data?: Record<string, unknown>; asDraft?: boolean };
     if (!body.data || typeof body.data !== "object") {
       return jsonError("VALIDATION_ERROR", "Body must contain a `data` object.", 422);
@@ -155,60 +191,85 @@ const createContent: OryCMSRoute = {
       asDraft: body.asDraft,
     });
     return jsonOk(entry, 201);
-  },
+  }),
 };
 
 const getContent: OryCMSRoute = {
   method: "GET",
   pattern: "collections/:collection/content/:id",
-  handler: async ({ params }) => {
+  handler: guardedContent("content.get", async ({ request, params }) => {
     const entry = await getOryCMSContentEntry(params.collection, params.id);
+    if (entry.status === "draft" && !(await canSeeDrafts(request))) {
+      return jsonError("ENTRY_NOT_FOUND", `Entry "${params.id}" not found.`, 404);
+    }
     return jsonOk(entry);
-  },
+  }),
 };
 
 const updateContent: OryCMSRoute = {
   method: "PATCH",
   pattern: "collections/:collection/content/:id",
-  handler: async ({ request, params }) => {
-    await protectOryCMSAdminRoute(request);
+  handler: guardedContent("content.update", async ({ request, params }) => {
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "update");
     const body = (await request.json()) as { data?: Record<string, unknown> };
     if (!body.data || typeof body.data !== "object") {
       return jsonError("VALIDATION_ERROR", "Body must contain a `data` object.", 422);
     }
     const entry = await updateOryCMSContentEntry(params.collection, params.id, { data: body.data });
     return jsonOk(entry);
-  },
+  }),
 };
 
 const deleteContent: OryCMSRoute = {
   method: "DELETE",
   pattern: "collections/:collection/content/:id",
-  handler: async ({ request, params }) => {
-    await protectOryCMSAdminRoute(request);
+  handler: guardedContent("content.delete", async ({ request, params }) => {
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "delete");
     await deleteOryCMSContentEntry(params.collection, params.id);
     return jsonOk(null);
-  },
+  }),
 };
 
 const publishContent: OryCMSRoute = {
   method: "POST",
   pattern: "collections/:collection/content/:id/publish",
-  handler: async ({ request, params }) => {
-    await protectOryCMSAdminRoute(request);
+  handler: guardedContent("content.publish", async ({ request, params }) => {
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "publish");
     const entry = await publishOryCMSContentEntry(params.collection, params.id);
+    await recordOryCMSAuditLog({
+      userId: session.userId,
+      action: "publish",
+      resource: "content",
+      resourceId: params.id,
+      metadata: { collection: params.collection },
+      ipAddress: request.headers.get("x-forwarded-for"),
+      userAgent: request.headers.get("user-agent"),
+    }).catch((err) => console.error("[OryCMS] audit log failed:", err));
     return jsonOk(entry);
-  },
+  }),
 };
 
 const unpublishContent: OryCMSRoute = {
   method: "DELETE",
   pattern: "collections/:collection/content/:id/publish",
-  handler: async ({ request, params }) => {
-    await protectOryCMSAdminRoute(request);
+  handler: guardedContent("content.unpublish", async ({ request, params }) => {
+    const session = await protectOryCMSAdminRoute(request);
+    await requireOryCMSPermission(session, "content", "publish");
     const entry = await unpublishOryCMSContentEntry(params.collection, params.id);
+    await recordOryCMSAuditLog({
+      userId: session.userId,
+      action: "unpublish",
+      resource: "content",
+      resourceId: params.id,
+      metadata: { collection: params.collection },
+      ipAddress: request.headers.get("x-forwarded-for"),
+      userAgent: request.headers.get("user-agent"),
+    }).catch((err) => console.error("[OryCMS] audit log failed:", err));
     return jsonOk(entry);
-  },
+  }),
 };
 
 // ── Fields (501 stubs — logic not yet implemented) ────────────────────────────────
